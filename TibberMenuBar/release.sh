@@ -51,6 +51,8 @@ git diff --cached --quiet || git commit -q -m "Release $TAG"
 git tag -a "$TAG" -m "Tibber Menu Bar $VERSION"
 git push -q origin HEAD "$TAG"
 gh release create "$TAG" "$OUT/$ASSET#Tibber Menu Bar $VERSION (macOS 14 or later)" --title "Tibber Menu Bar $VERSION" --notes "$NOTES"
+# A push that carries a tag does not always start a Pages build, and the appcast must go live for Sparkle to see the update.
+gh api -X POST repos/robinnewstory/tibber-menu-bar/pages/builds > /dev/null 2>&1 || echo "Could not request a Pages build; check the appcast at https://robinnewstory.github.io/tibber-menu-bar/appcast.xml" >&2
 echo "Released $TAG — sha256 $SHA"
 
 TAP="$ROOT/../homebrew-tap"

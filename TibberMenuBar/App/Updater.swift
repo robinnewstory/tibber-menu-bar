@@ -62,3 +62,58 @@ final class UpdateCheckReporter: NSObject, SPUUpdaterDelegate {
         done = true
     }
 }
+
+/// `--install-update`: downloads, verifies and installs whatever the feed offers, with no dialogs, then lets
+/// Sparkle relaunch the app. Quit the running app first. For proving a release's update path end to end.
+final class HeadlessUpdateDriver: NSObject, SPUUserDriver {
+    private var finished = false
+    private var expected: UInt64 = 0
+    private var received: UInt64 = 0
+
+    static func run() {
+        let driver = HeadlessUpdateDriver()
+        let updater = SPUUpdater(hostBundle: .main, applicationBundle: .main, userDriver: driver, delegate: nil)
+        do { try updater.start() } catch { print("updater failed to start: \(error.localizedDescription)"); exit(1) }
+        print("installed: \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] ?? "?") (\(Bundle.main.infoDictionary?["CFBundleVersion"] ?? "?"))")
+        updater.checkForUpdates()
+        let deadline = Date().addingTimeInterval(300)
+        while !driver.finished, Date() < deadline { RunLoop.main.run(until: Date().addingTimeInterval(0.2)) }
+        if !driver.finished { print("gave up after 5 minutes") }
+    }
+
+    func show(_ request: SPUUpdatePermissionRequest, reply: @escaping (SUUpdatePermissionResponse) -> Void) {
+        reply(SUUpdatePermissionResponse(automaticUpdateChecks: false, sendSystemProfile: false))
+    }
+    func showUserInitiatedUpdateCheck(cancellation: @escaping () -> Void) { print("checking…") }
+    func showUpdateFound(with appcastItem: SUAppcastItem, state: SPUUserUpdateState, reply: @escaping (SPUUserUpdateChoice) -> Void) {
+        print("found \(appcastItem.displayVersionString) (\(appcastItem.versionString)); installing")
+        reply(.install)
+    }
+    func showUpdateReleaseNotes(with downloadData: SPUDownloadData) {}
+    func showUpdateReleaseNotesFailedToDownloadWithError(_ error: Error) {}
+    func showUpdateNotFoundWithError(_ error: Error, acknowledgement: @escaping () -> Void) {
+        print("no update: \(error.localizedDescription)"); finished = true; acknowledgement()
+    }
+    func showUpdaterError(_ error: Error, acknowledgement: @escaping () -> Void) {
+        print("error: \(error.localizedDescription)"); finished = true; acknowledgement()
+    }
+    func showDownloadInitiated(cancellation: @escaping () -> Void) { print("downloading…") }
+    func showDownloadDidReceiveExpectedContentLength(_ expectedContentLength: UInt64) { expected = expectedContentLength }
+    func showDownloadDidReceiveData(ofLength length: UInt64) {
+        received += length
+        if expected > 0, received >= expected { print("downloaded \(received) bytes") }
+    }
+    func showDownloadDidStartExtractingUpdate() { print("extracting and verifying signature…") }
+    func showExtractionReceivedProgress(_ progress: Double) {}
+    func showReady(toInstallAndRelaunch reply: @escaping (SPUUserUpdateChoice) -> Void) {
+        print("verified; installing and relaunching"); reply(.install)
+    }
+    func showInstallingUpdate(withApplicationTerminated applicationTerminated: Bool, retryTerminatingApplication: @escaping () -> Void) {
+        // The installer waits for this process to go away; a command-line run has no event loop to quit politely.
+        if !applicationTerminated { print("installer running; exiting so it can swap the app"); exit(0) }
+    }
+    func showUpdateInstalledAndRelaunched(_ relaunched: Bool, acknowledgement: @escaping () -> Void) {
+        print("installed, relaunched: \(relaunched)"); finished = true; acknowledgement()
+    }
+    func dismissUpdateInstallation() { finished = true }
+}

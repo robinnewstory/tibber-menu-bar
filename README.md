@@ -91,6 +91,7 @@ The binary accepts a few flags and never prints the token itself:
 "/Applications/Tibber Menu Bar.app/Contents/MacOS/Tibber Menu Bar" --fetch         # fetch now and update the cache
 "/Applications/Tibber Menu Bar.app/Contents/MacOS/Tibber Menu Bar" --snapshot x.png [--dark] [--menubar] [-AppleLanguages "(nl)"]
 "/Applications/Tibber Menu Bar.app/Contents/MacOS/Tibber Menu Bar" --check-updates  # ask the update feed, no UI
+"/Applications/Tibber Menu Bar.app/Contents/MacOS/Tibber Menu Bar" --install-update # install what the feed offers, no dialogs (quit the app first)
 ```
 
 ### Adding a language
