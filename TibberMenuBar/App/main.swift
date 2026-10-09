@@ -6,4 +6,8 @@ if CommandLine.arguments.contains("--status") {
     Diagnostics.printStatus()
     exit(0)
 }
+if CommandLine.arguments.contains("--check-token") {
+    Diagnostics.checkToken()
+    exit(0)
+}
 TibberMenuBarApp.main()

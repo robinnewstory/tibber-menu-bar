@@ -94,7 +94,24 @@ final class PriceModel: ObservableObject {
 
     // MARK: Token & homes
 
-    func saveToken(_ token: String) async -> Bool {
+    /// Removes what people paste by accident: a "Bearer " prefix, quotes, line breaks and inner whitespace.
+    static func sanitize(_ raw: String) -> String {
+        var t = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        if t.lowercased().hasPrefix("bearer ") { t = String(t.dropFirst(7)) }
+        t = t.trimmingCharacters(in: CharacterSet(charactersIn: "\"'`"))
+        return t.filter { !$0.isWhitespace && !$0.isNewline }
+    }
+
+    func saveToken(_ raw: String) async -> Bool {
+        let token = Self.sanitize(raw)
+        if token.lowercased().hasPrefix("http") || token.contains("/") || token.contains(":") {
+            lastError = "That is a web address, not a token. On developer.tibber.com → Settings → Access Token, create a token and use its copy button, then paste it here."
+            return false
+        }
+        if !token.isEmpty, token.count < 20 || !token.allSatisfy({ $0.isASCII && ($0.isLetter || $0.isNumber || "-_.".contains($0)) }) {
+            lastError = "That doesn't look like a Tibber access token. Copy the whole token from developer.tibber.com → Settings → Access Token."
+            return false
+        }
         do {
             try tokenStore.save(token)
         } catch {

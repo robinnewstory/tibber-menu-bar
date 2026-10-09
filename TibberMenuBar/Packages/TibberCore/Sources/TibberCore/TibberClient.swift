@@ -76,6 +76,9 @@ public final class TibberClient {
             if errors.contains(where: { $0.extensions?.code == "UNAUTHENTICATED" || $0.message.lowercased().contains("invalid token") }) {
                 throw TibberError.invalidToken
             }
+            if errors.contains(where: { let m = $0.message.lowercased(); return m.contains("jws") || m.contains("jwt") }) {
+                throw TibberError.malformedToken(errors[0].message)
+            }
             if envelope.data == nil { throw TibberError.graphQL(errors.map(\.message).joined(separator: "; ")) }
         }
         guard let payload = envelope.data else { throw TibberError.decoding("empty data") }

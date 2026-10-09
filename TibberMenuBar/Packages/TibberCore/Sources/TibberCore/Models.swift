@@ -102,6 +102,7 @@ public struct PriceData: Codable, Equatable, Sendable {
 public enum TibberError: LocalizedError, Equatable {
     case noToken
     case invalidToken
+    case malformedToken(String)
     case http(Int)
     case graphQL(String)
     case noHomes
@@ -112,6 +113,7 @@ public enum TibberError: LocalizedError, Equatable {
         switch self {
         case .noToken: return "No Tibber access token yet. Add one in Settings."
         case .invalidToken: return "Tibber rejected the access token. Create a new one at developer.tibber.com."
+        case .malformedToken(let detail): return "That doesn't look like a complete Tibber access token (\(detail)). Copy the whole token from developer.tibber.com → Settings → Access Token and paste it again."
         case .http(let code): return "Tibber responded with HTTP \(code)."
         case .graphQL(let message): return "Tibber API: \(message)"
         case .noHomes: return "No homes on this Tibber account."
