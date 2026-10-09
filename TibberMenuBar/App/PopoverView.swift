@@ -33,6 +33,7 @@ struct PopoverView: View {
         }
         .padding(12)
         .frame(width: 420)
+        .background(Color(nsColor: .windowBackgroundColor).opacity(0.92))
         .onChange(of: day) { _, _ in scrubbed = nil }
     }
 
@@ -200,7 +201,7 @@ struct PopoverView: View {
     // MARK: Pieces
 
     private func caption(_ text: String) -> some View {
-        Text(text.uppercased()).font(.system(size: 9, weight: .semibold)).tracking(0.6).foregroundStyle(.secondary).lineLimit(1)
+        Text(text.uppercased()).font(.system(size: 9, weight: .semibold)).tracking(0.6).foregroundStyle(.primary.opacity(0.6)).lineLimit(1)
     }
 
     private func cents(_ total: Double) -> String { PriceFormatter.menuBar(total, currency: model.data?.currency ?? "EUR", style: .cents) }
@@ -276,7 +277,8 @@ struct Tile<Content: View>: View {
                 .padding(.vertical, 10)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(Color.primary.opacity(0.10), lineWidth: 1))
     }
 }
 
@@ -379,10 +381,11 @@ struct PriceChart: View {
         } else {
             Chart {
                 ForEach(points) { p in
-                    BarMark(
-                        xStart: .value("Start", p.startsAt.addingTimeInterval(resolution.slotLength * 0.08)),
-                        xEnd: .value("End", p.startsAt.addingTimeInterval(resolution.slotLength * 0.92)),
-                        y: .value("Price", p.total * 100)
+                    RectangleMark(
+                        xStart: .value("Start", p.startsAt.addingTimeInterval(resolution.slotLength * 0.02)),
+                        xEnd: .value("End", p.startsAt.addingTimeInterval(resolution.slotLength * 0.98)),
+                        yStart: .value("Floor", yDomain.lowerBound),
+                        yEnd: .value("Price", p.total * 100)
                     )
                     .foregroundStyle(barColor(p))
                 }
@@ -407,7 +410,7 @@ struct PriceChart: View {
             }
             .chartXAxis {
                 AxisMarks(values: .stride(by: .hour, count: points.count > 100 ? 6 : 3)) { value in
-                    AxisGridLine().foregroundStyle(.primary.opacity(0.08))
+                    AxisGridLine().foregroundStyle(.primary.opacity(0.14))
                     AxisValueLabel {
                         if let d = value.as(Date.self) { Text(PriceFormatter.time(d, timeZone: timeZone)).font(.system(size: 9)) }
                     }
@@ -415,13 +418,14 @@ struct PriceChart: View {
             }
             .chartYAxis {
                 AxisMarks(position: .trailing) { value in
-                    AxisGridLine().foregroundStyle(.primary.opacity(0.08))
+                    AxisGridLine().foregroundStyle(.primary.opacity(0.14))
                     AxisValueLabel {
                         if let v = value.as(Double.self) { Text(String(format: "%.0f", v)).font(.system(size: 9)) }
                     }
                 }
             }
             .chartXScale(domain: xDomain)
+            .chartYScale(domain: yDomain)
             .chartOverlay { proxy in
                 GeometryReader { geo in
                     Rectangle().fill(.clear).contentShape(Rectangle())
@@ -455,6 +459,14 @@ struct PriceChart: View {
         return start...end
     }
 
+    /// Cents, padded to the nearest 5 around the day's range so the bars use the full height.
+    private var yDomain: ClosedRange<Double> {
+        guard let s = PriceMath.stats(points) else { return 0...40 }
+        let lo = (floor((s.min.total * 100 - 2) / 5) * 5)
+        let hi = (ceil((s.max.total * 100 + 2) / 5) * 5)
+        return min(lo, hi - 5)...max(hi, lo + 5)
+    }
+
     private func slot(at date: Date) -> PricePoint? {
         guard let first = points.first, let last = points.last else { return nil }
         if date <= first.startsAt { return first }
@@ -466,6 +478,6 @@ struct PriceChart: View {
         let base = TierColor.color(PriceMath.relativeTier(p.total, average: average))
         if let marker, marker.startsAt == p.startsAt { return base }
         let isPast = p.startsAt.addingTimeInterval(resolution.slotLength) <= now
-        return base.opacity(isPast ? 0.35 : 0.7)
+        return base.opacity(isPast ? 0.5 : 0.85)
     }
 }
