@@ -59,8 +59,9 @@ enum Diagnostics {
     /// Fetches prices for the configured home and updates the cache, like the app would.
     static func fetch() {
         guard let token = (try? TokenStore.keychain.load()) ?? nil, !token.isEmpty else { print("token: none"); return }
-        let homeId = UserDefaults.standard.string(forKey: "homeId")
-        let resolution = Resolution(rawValue: UserDefaults.standard.string(forKey: "resolution") ?? "") ?? .quarterHourly
+        let options = Persisted.load(PriceOptions.key, default: PriceOptions())
+        let homeId = options.homeId
+        let resolution = options.resolution
         let done = DispatchSemaphore(value: 0)
         Task {
             do {

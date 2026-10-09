@@ -4,130 +4,238 @@ import TibberCore
 struct SettingsView: View {
     @ObservedObject var model: PriceModel
     @State private var tokenInput = ""
-    @State private var saving = false
-    @State private var message: String?
-    @State private var belowText = ""
-    @State private var aboveText = ""
+    @State private var connecting = false
+    @State private var accountMessage: String?
 
     var body: some View {
         Form {
-            Section("Tibber account") {
-                SecureField("Personal access token", text: $tokenInput)
-                    .textFieldStyle(.roundedBorder)
-                HStack {
-                    Button(saving ? "Connecting…" : (model.hasToken ? "Replace token" : "Connect")) {
-                        saving = true
-                        Task {
-                            let ok = await model.saveToken(tokenInput)
-                            message = ok ? "Connected." : (model.lastError ?? "Failed")
-                            if ok { tokenInput = "" }
-                            saving = false
-                        }
-                    }
-                    .disabled(tokenInput.trimmingCharacters(in: .whitespaces).isEmpty || saving)
-                    if model.hasToken {
-                        Button("Disconnect") { model.clearToken(); message = "Token removed." }
-                    }
-                    Button("Get a token…") { NSWorkspace.shared.open(URL(string: "https://developer.tibber.com/settings/access-token")!) }
-                }
-                if let message { Text(message).font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true) }
-                Text(model.hasToken ? "A token is stored in your Keychain." : "No token yet. Create one at developer.tibber.com → Settings → Access Token.")
-                    .font(.caption).foregroundStyle(.secondary)
-            }
-
-            Section("Prices") {
-                Picker("Home", selection: Binding(get: { model.selectedHomeId ?? "" }, set: { model.selectedHomeId = $0.isEmpty ? nil : $0 })) {
-                    ForEach(model.homes) { home in
-                        Text(home.displayName + (home.hasSubscription ? "" : " (no subscription)") + (home.liveMeasurements ? " · Pulse" : "")).tag(home.id)
-                    }
-                }
-                .disabled(model.homes.count <= 1)
-                Picker("Resolution", selection: $model.resolution) {
-                    ForEach(Resolution.allCases, id: \.self) { Text($0.label).tag($0) }
-                }
-                Picker("Price level by", selection: $model.levelSource) {
-                    ForEach(LevelSource.allCases, id: \.self) { Text($0.label).tag($0) }
-                }
-                Text("Decides what \"cheap\" and \"expensive\" mean for the icon, the level word, the tiles and the chart colors.")
-                    .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-            }
-
-            Section("Menu bar") {
-                Picker("Price format", selection: $model.labelStyle) {
-                    ForEach(LabelStyle.allCases, id: \.self) { Text($0.label).tag($0) }
-                }
-                Picker("Icon", selection: $model.iconStyle) {
-                    ForEach(PriceModel.IconStyle.allCases, id: \.self) { Text($0.label).tag($0) }
-                }
-                Toggle("Trend arrow (next slot up/down)", isOn: $model.showTrend)
-                Toggle("Next slot's price", isOn: $model.showNext)
-                Toggle("Level word (Cheap / Normal / Expensive)", isOn: $model.showLevelWord)
-                Text("Preview: \(model.menuTitle)").font(.caption).foregroundStyle(.secondary).monospacedDigit()
-                Toggle("Live power from Tibber Pulse (in the popover)", isOn: $model.showLivePower)
-                    .disabled(!model.liveSupported)
-                Toggle("Also show live power in the menu bar", isOn: $model.liveInMenuBar)
-                    .disabled(!model.liveSupported || !model.showLivePower)
-                if !model.liveSupported { Text("Live power needs a home with a Tibber Pulse.").font(.caption).foregroundStyle(.secondary) }
-            }
-
-            Section("Chart") {
-                Picker("Style", selection: $model.chart.style) {
-                    ForEach(ChartOptions.Style.allCases, id: \.self) { Text($0.label).tag($0) }
-                }
-                Picker("Colors", selection: $model.chart.colorMode) {
-                    ForEach(ChartOptions.ColorMode.allCases, id: \.self) { Text($0.label).tag($0) }
-                }
-                Toggle("Average line", isOn: $model.chart.showAverage)
-                Toggle("Shade the cheapest window", isOn: $model.chart.shadeWindow)
-                Toggle("Dim past slots", isOn: $model.chart.dimPast)
-                Toggle("Axis starts at zero", isOn: $model.chart.fromZero)
-                Picker("Height", selection: $model.chart.height) {
-                    ForEach(ChartOptions.Height.allCases, id: \.self) { Text($0.label).tag($0) }
-                }
-                Picker("Opens on", selection: $model.chart.defaultDay) {
-                    ForEach(ChartOptions.DefaultDay.allCases, id: \.self) { Text($0.label).tag($0) }
-                }
-            }
-
-            Section("Notifications") {
-                Toggle("Cheap window about to start", isOn: Binding(get: { model.notificationPrefs.cheapWindowStart }, set: { model.notificationPrefs.cheapWindowStart = $0 }))
-                Picker("Window length", selection: Binding(get: { model.notificationPrefs.plannerHours }, set: { model.notificationPrefs.plannerHours = $0 })) {
-                    ForEach(Planner.durationsHours, id: \.self) { Text("\($0) h").tag($0) }
-                }
-                Toggle("Tomorrow's prices published", isOn: Binding(get: { model.notificationPrefs.tomorrowPublished }, set: { model.notificationPrefs.tomorrowPublished = $0 }))
-                HStack {
-                    Toggle("Price drops below", isOn: Binding(get: { model.notificationPrefs.belowCents != nil }, set: { on in
-                        model.notificationPrefs.belowCents = on ? (Double(belowText.replacingOccurrences(of: ",", with: ".")) ?? 15) : nil
-                        if on, belowText.isEmpty { belowText = "15" }
-                    }))
-                    TextField("¢", text: $belowText).frame(width: 60).textFieldStyle(.roundedBorder)
-                        .onSubmit { if model.notificationPrefs.belowCents != nil { model.notificationPrefs.belowCents = Double(belowText.replacingOccurrences(of: ",", with: ".")) } }
-                    Text("¢/kWh").foregroundStyle(.secondary)
-                }
-                HStack {
-                    Toggle("Price rises above", isOn: Binding(get: { model.notificationPrefs.aboveCents != nil }, set: { on in
-                        model.notificationPrefs.aboveCents = on ? (Double(aboveText.replacingOccurrences(of: ",", with: ".")) ?? 35) : nil
-                        if on, aboveText.isEmpty { aboveText = "35" }
-                    }))
-                    TextField("¢", text: $aboveText).frame(width: 60).textFieldStyle(.roundedBorder)
-                        .onSubmit { if model.notificationPrefs.aboveCents != nil { model.notificationPrefs.aboveCents = Double(aboveText.replacingOccurrences(of: ",", with: ".")) } }
-                    Text("¢/kWh").foregroundStyle(.secondary)
-                }
-                Text("Thresholds apply to the price of the current slot; you're told once when it crosses. macOS asks for permission the first time a notification is enabled.")
-                    .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-            }
-
-            Section("General") {
-                Toggle("Launch at login", isOn: Binding(get: { model.launchAtLogin }, set: { model.launchAtLogin = $0 }))
-                if let error = model.lastError { Text(error).font(.caption).foregroundStyle(.orange).fixedSize(horizontal: false, vertical: true) }
-            }
+            accountSection
+            pricesSection
+            menuBarSection
+            popoverSection
+            notificationsSection
+            generalSection
         }
         .formStyle(.grouped)
-        .frame(width: 460)
-        .onAppear {
-            if model.hasToken && model.homes.isEmpty { Task { await model.loadHomes() } }
-            if let b = model.notificationPrefs.belowCents { belowText = String(format: "%g", b) }
-            if let a = model.notificationPrefs.aboveCents { aboveText = String(format: "%g", a) }
+        .frame(width: 480)
+        .onAppear { if model.hasToken && model.homes.isEmpty { Task { await model.loadHomes() } } }
+    }
+
+    // MARK: Account
+
+    private var accountSection: some View {
+        Section {
+            SecureField("Personal access token", text: $tokenInput, prompt: Text("Paste your token"))
+                .textFieldStyle(.roundedBorder)
+            HStack {
+                Button(connecting ? "Connecting…" : (model.hasToken ? "Replace token" : "Connect")) {
+                    connecting = true
+                    Task {
+                        let problem = await model.saveToken(tokenInput)
+                        accountMessage = problem ?? "Connected."
+                        if problem == nil { tokenInput = "" }
+                        connecting = false
+                    }
+                }
+                .disabled(tokenInput.trimmingCharacters(in: .whitespaces).isEmpty || connecting)
+                if model.hasToken {
+                    Button("Disconnect") { model.clearToken(); accountMessage = "Token removed." }
+                }
+                Spacer()
+                Link("Create a token…", destination: URL(string: "https://developer.tibber.com/settings/access-token")!)
+            }
+            if let accountMessage {
+                Text(accountMessage).font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            }
+        } header: {
+            Text("Tibber account")
+        } footer: {
+            Text(model.hasToken
+                 ? "Your token is stored in the macOS Keychain and only ever sent to api.tibber.com."
+                 : "Create a personal access token on developer.tibber.com under Settings → Access Token, then paste it here.")
         }
+    }
+
+    // MARK: Prices
+
+    private var pricesSection: some View {
+        Section {
+            Picker("Home", selection: Binding(get: { model.prices.homeId ?? "" }, set: { model.prices.homeId = $0.isEmpty ? nil : $0 })) {
+                ForEach(model.homes) { home in
+                    Text(homeLabel(home)).tag(home.id)
+                }
+            }
+            .disabled(model.homes.count <= 1)
+            Picker("Resolution", selection: $model.prices.resolution) {
+                ForEach(Resolution.allCases, id: \.self) { Text($0.label).tag($0) }
+            }
+            Picker("Cheap and expensive mean", selection: $model.prices.levelSource) {
+                Text("Tibber's level, compared with recent days").tag(LevelSource.tibber)
+                Text("Below or above today's average").tag(LevelSource.average)
+            }
+        } header: {
+            Text("Prices")
+        } footer: {
+            Text("The price level colors the icon and the tiles, provides the level word, and colors the chart.")
+        }
+    }
+
+    private func homeLabel(_ home: HomeInfo) -> String {
+        var parts = [home.displayName]
+        if !home.hasSubscription { parts.append("no subscription") }
+        if home.liveMeasurements { parts.append("Pulse") }
+        return parts.joined(separator: " · ")
+    }
+
+    // MARK: Menu bar
+
+    private var menuBarSection: some View {
+        Section {
+            Picker("Price format", selection: $model.menuBar.format) {
+                ForEach(LabelStyle.allCases, id: \.self) { Text($0.label).tag($0) }
+            }
+            Picker("Icon", selection: $model.menuBar.icon) {
+                ForEach(MenuBarOptions.Icon.allCases, id: \.self) { Text($0.label).tag($0) }
+            }
+            Toggle("Trend arrow", isOn: $model.menuBar.trendArrow)
+            Toggle("Next slot's price", isOn: $model.menuBar.nextPrice)
+            Toggle("Level word", isOn: $model.menuBar.levelWord)
+            Toggle("Live power", isOn: $model.menuBar.livePower)
+                .disabled(!model.liveEnabled)
+            LabeledContent("Preview") {
+                MenuBarPreview(model: model)
+            }
+        } header: {
+            Text("Menu bar")
+        } footer: {
+            Text(model.liveEnabled ? "" : "Live power in the menu bar needs the Pulse stream, enabled under Popover.")
+        }
+    }
+
+    // MARK: Popover
+
+    private var popoverSection: some View {
+        Section {
+            Toggle("Live power from Tibber Pulse", isOn: $model.popover.livePower)
+                .disabled(!model.liveSupported)
+            Picker("Cheapest window", selection: $model.notifications.plannerHours) {
+                ForEach(Planner.durationsHours, id: \.self) { Text("\($0) hours").tag($0) }
+            }
+            Picker("Chart style", selection: $model.popover.chart.style) {
+                ForEach(ChartOptions.Style.allCases, id: \.self) { Text($0.label).tag($0) }
+            }
+            Picker("Chart colors", selection: $model.popover.chart.colorMode) {
+                ForEach(ChartOptions.ColorMode.allCases, id: \.self) { Text($0.label).tag($0) }
+            }
+            Picker("Chart height", selection: $model.popover.chart.height) {
+                ForEach(ChartOptions.Height.allCases, id: \.self) { Text($0.label).tag($0) }
+            }
+            Picker("Chart opens on", selection: $model.popover.chart.defaultDay) {
+                ForEach(ChartOptions.DefaultDay.allCases, id: \.self) { Text($0.label).tag($0) }
+            }
+            Toggle("Average line", isOn: $model.popover.chart.showAverage)
+            Toggle("Shade the cheapest window", isOn: $model.popover.chart.shadeWindow)
+            Toggle("Dim past slots", isOn: $model.popover.chart.dimPast)
+            Toggle("Price axis starts at zero", isOn: $model.popover.chart.fromZero)
+        } header: {
+            Text("Popover")
+        } footer: {
+            Text(model.liveSupported
+                 ? "The cheapest window length is also used by the window notification and the chart shading."
+                 : "Live power needs a home with a Tibber Pulse. The cheapest window length is also used by the window notification and the chart shading.")
+        }
+    }
+
+    // MARK: Notifications
+
+    private var notificationsSection: some View {
+        Section {
+            Toggle("Cheapest window is about to start", isOn: $model.notifications.cheapWindowStart)
+            Toggle("Tomorrow's prices are published", isOn: $model.notifications.tomorrowPublished)
+            ThresholdRow(title: "Price drops below", value: $model.notifications.belowCents, defaultValue: 15)
+            ThresholdRow(title: "Price rises above", value: $model.notifications.aboveCents, defaultValue: 35)
+        } header: {
+            Text("Notifications")
+        } footer: {
+            Text("The window reminder comes 10 minutes ahead. Thresholds watch the current slot and fire once per crossing. macOS asks for permission the first time you enable one.")
+        }
+    }
+
+    // MARK: General
+
+    private var generalSection: some View {
+        Section {
+            Toggle("Launch at login", isOn: Binding(get: { model.launchAtLogin }, set: { model.launchAtLogin = $0 }))
+            LabeledContent("Version", value: Self.versionText)
+            if let error = model.lastError {
+                LabeledContent("Last problem") {
+                    Text(error).foregroundStyle(.orange).multilineTextAlignment(.trailing).fixedSize(horizontal: false, vertical: true)
+                }
+            }
+        } header: {
+            Text("General")
+        }
+    }
+
+    private static var versionText: String {
+        let info = Bundle.main.infoDictionary
+        let version = info?["CFBundleShortVersionString"] as? String ?? "?"
+        let build = info?["CFBundleVersion"] as? String ?? "?"
+        return "\(version) (\(build))"
+    }
+}
+
+/// A toggle with a cents field that is only editable while the toggle is on.
+struct ThresholdRow: View {
+    let title: String
+    @Binding var value: Double?
+    let defaultValue: Double
+    @State private var text = ""
+
+    var body: some View {
+        HStack {
+            Toggle(title, isOn: Binding(
+                get: { value != nil },
+                set: { on in
+                    value = on ? (Double(text.replacingOccurrences(of: ",", with: ".")) ?? defaultValue) : nil
+                    if on { text = Self.format(value ?? defaultValue) }
+                }
+            ))
+            TextField("", text: $text)
+                .frame(width: 56)
+                .multilineTextAlignment(.trailing)
+                .textFieldStyle(.roundedBorder)
+                .disabled(value == nil)
+                .onSubmit { commit() }
+                .onChange(of: text) { _, _ in commit() }
+            Text("¢/kWh").foregroundStyle(.secondary)
+        }
+        .onAppear { text = value.map(Self.format) ?? Self.format(defaultValue) }
+    }
+
+    private func commit() {
+        guard value != nil, let number = Double(text.replacingOccurrences(of: ",", with: ".")) else { return }
+        value = number
+    }
+
+    private static func format(_ v: Double) -> String { String(format: "%g", v) }
+}
+
+/// A mock of the menu bar item, so format changes can be judged without looking up.
+struct MenuBarPreview: View {
+    @ObservedObject var model: PriceModel
+
+    var body: some View {
+        HStack(spacing: 5) {
+            switch model.menuBar.icon {
+            case .bolt: Image(systemName: model.menuSymbol)
+            case .dot: Image(nsImage: model.menuDot)
+            case .none: EmptyView()
+            }
+            Text(model.menuTitle).monospacedDigit()
+        }
+        .font(.system(size: 13))
+        .padding(.horizontal, 8).padding(.vertical, 3)
+        .background(Color.primary.opacity(0.08), in: RoundedRectangle(cornerRadius: 5))
     }
 }

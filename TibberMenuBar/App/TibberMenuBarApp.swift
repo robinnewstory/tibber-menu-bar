@@ -9,7 +9,7 @@ struct TibberMenuBarApp: App {
         MenuBarExtra {
             PopoverView(model: model)
         } label: {
-            switch model.iconStyle {
+            switch model.menuBar.icon {
             case .bolt:
                 Label { Text(model.menuTitle) } icon: { Image(systemName: model.menuSymbol) }
                     .labelStyle(.titleAndIcon)
