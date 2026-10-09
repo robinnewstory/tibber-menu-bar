@@ -5,6 +5,8 @@ import TibberCore
 struct PopoverView: View {
     @ObservedObject var model: PriceModel
     @State private var day: Day = .today
+    /// Slot under the pointer while dragging across the chart; nil shows the current slot again.
+    @State private var scrubbed: PricePoint?
     @Environment(\.openSettings) private var openSettings
 
     enum Day: String, CaseIterable { case today = "Today", tomorrow = "Tomorrow" }
@@ -17,7 +19,7 @@ struct PopoverView: View {
                 header(data)
                 picker(data)
                 PriceChart(points: day == .today ? data.today : data.tomorrow, resolution: data.resolution, timeZone: data.timeZone,
-                           current: day == .today ? model.current : nil, now: model.now)
+                           current: day == .today ? model.current : nil, now: model.now, selected: $scrubbed)
                     .frame(height: 150)
                 statsRow(data)
             } else if model.isLoading {
@@ -34,17 +36,22 @@ struct PopoverView: View {
         .padding(12)
         .frame(width: 340)
         .onAppear { if model.data?.hasTomorrow != true { day = .today } }
+        .onChange(of: day) { _, _ in scrubbed = nil }
     }
 
     // MARK: Pieces
 
     private func header(_ data: PriceData) -> some View {
-        HStack(alignment: .firstTextBaseline) {
+        let shown = scrubbed ?? model.current
+        return HStack(alignment: .firstTextBaseline) {
             VStack(alignment: .leading, spacing: 2) {
-                if let current = model.current {
+                if let current = shown {
                     Text(PriceFormatter.detailed(current.total, currency: data.currency)).font(.system(size: 22, weight: .semibold, design: .rounded))
                     HStack(spacing: 6) {
                         Text(PriceFormatter.slotRange(current, slotLength: data.resolution.slotLength, timeZone: data.timeZone))
+                        if scrubbed != nil {
+                            Text(day == .today ? "selected" : "tomorrow").font(.caption2).foregroundStyle(.tertiary)
+                        }
                         if let level = current.level {
                             Text(level.label)
                                 .font(.caption2.weight(.semibold))
@@ -169,8 +176,15 @@ struct PriceChart: View {
     let timeZone: TimeZone
     let current: PricePoint?
     let now: Date
+    @Binding var selected: PricePoint?
 
     private var stats: PriceStats? { PriceMath.stats(points) }
+    /// The slot the marker sits on: the scrubbed one while dragging, otherwise the current one.
+    private var marker: PricePoint? { selected ?? current }
+    private var markerDate: Date? {
+        if let selected { return selected.startsAt.addingTimeInterval(resolution.slotLength / 2) }
+        return current == nil ? nil : now
+    }
 
     var body: some View {
         if points.isEmpty {
@@ -190,15 +204,32 @@ struct PriceChart: View {
                         .lineStyle(StrokeStyle(lineWidth: 1, dash: [3, 3]))
                         .foregroundStyle(.secondary.opacity(0.6))
                 }
-                if let current {
-                    RuleMark(x: .value("Now", now))
-                        .lineStyle(StrokeStyle(lineWidth: 1))
+                if let marker, let markerDate {
+                    RuleMark(x: .value("Marker", markerDate))
+                        .lineStyle(StrokeStyle(lineWidth: selected == nil ? 1 : 1.5))
                         .foregroundStyle(.primary.opacity(0.7))
                         .annotation(position: .top, alignment: .center) {
-                            Text(String(format: "%.1f", current.total * 100)).font(.system(size: 9, weight: .semibold))
+                            Text(selected == nil
+                                 ? String(format: "%.1f", marker.total * 100)
+                                 : "\(String(format: "%.1f", marker.total * 100)) · \(PriceFormatter.time(marker.startsAt, timeZone: timeZone))")
+                                .font(.system(size: 9, weight: .semibold))
                                 .padding(.horizontal, 4).padding(.vertical, 1)
                                 .background(.regularMaterial, in: Capsule())
                         }
+                }
+            }
+            .chartOverlay { proxy in
+                GeometryReader { geo in
+                    Rectangle().fill(.clear).contentShape(Rectangle())
+                        .gesture(
+                            DragGesture(minimumDistance: 0)
+                                .onChanged { value in
+                                    guard let plot = proxy.plotFrame else { return }
+                                    let x = value.location.x - geo[plot].origin.x
+                                    if let date: Date = proxy.value(atX: x) { selected = slot(at: date) }
+                                }
+                                .onEnded { _ in selected = nil }
+                        )
                 }
             }
             .chartXAxis {
@@ -227,9 +258,17 @@ struct PriceChart: View {
         return start...end
     }
 
+    /// The slot containing the given date, clamped to the chart's range.
+    private func slot(at date: Date) -> PricePoint? {
+        guard let first = points.first, let last = points.last else { return nil }
+        if date <= first.startsAt { return first }
+        if date >= last.startsAt { return last }
+        return points.last { $0.startsAt <= date }
+    }
+
     private func barColor(_ p: PricePoint) -> Color {
         let base = LevelColor.color(p.level)
-        if let current, current.startsAt == p.startsAt { return base }
+        if let marker, marker.startsAt == p.startsAt { return base }
         return base.opacity(0.55)
     }
 }
