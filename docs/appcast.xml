@@ -5,5 +5,23 @@
     <link>https://robinnewstory.github.io/tibber-menu-bar/appcast.xml</link>
     <description>Updates for Tibber Menu Bar</description>
     <language>en</language>
+    <item>
+      <title>Tibber Menu Bar 0.2.0</title>
+      <pubDate>Fri, 09 Oct 2026 09:35:16 +0000</pubDate>
+      <sparkle:version>202610091135</sparkle:version>
+      <sparkle:shortVersionString>0.2.0</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>14.0.0</sparkle:minimumSystemVersion>
+      <link>https://robinnewstory.github.io/tibber-menu-bar/</link>
+      <description sparkle:format="markdown"><![CDATA[## 0.2.0
+
+- Automatic updates: the app now checks once a day and installs new versions itself (Sparkle). Settings → General → Check for Updates…
+- Hover the price tile for the energy and tax breakdown.
+- Solar: homes that feed power into the grid see the net power, today's export, and a yellow gauge.
+- Colorblind-friendly level colors (Settings → Prices → Level colors).
+- Clock times follow your macOS locale.
+- Settings survive upgrades that add new options.
+- macOS 14 or later. Signed but not notarized: allow it once under System Settings → Privacy & Security → Open Anyway.]]></description>
+      <enclosure url="https://github.com/robinnewstory/tibber-menu-bar/releases/download/v0.2.0/Tibber-Menu-Bar.zip" length="3658004" type="application/octet-stream" sparkle:edSignature="Ny2gqRpWy7lHKXkqHDhI1acDxqFGYFfN/hGg7KCo2N3NHQwM6/a+hTXcp6dYZpSS1ZUMmzIWvO83UEKUa84yAg=="/>
+    </item>
   </channel>
 </rss>
