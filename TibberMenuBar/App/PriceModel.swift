@@ -26,6 +26,8 @@ final class PriceModel: ObservableObject {
     private var liveClient: LiveClient?
     private var websocketURL: URL?
     private var liveWrittenAt: Date?
+    private var liveCountSince = Date()
+    private var liveCount = 0
 
     // Settings
     private var suppressSideEffects = false
@@ -279,9 +281,12 @@ final class PriceModel: ObservableObject {
                 guard let self else { return }
                 self.live = m
                 self.now = Date()
+                self.liveCount += 1
                 if self.liveWrittenAt.map({ Date().timeIntervalSince($0) > 30 }) ?? true {
                     self.liveWrittenAt = Date()
-                    LiveSnapshot.write(m)
+                    LiveSnapshot.write(m, messages: self.liveCount, since: self.liveCountSince)
+                    self.liveCount = 0
+                    self.liveCountSince = Date()
                 }
             }
         }
@@ -312,16 +317,23 @@ final class PriceModel: ObservableObject {
     }
 }
 
-/// Latest live reading on disk, so `--status` can show whether the Pulse stream works.
+/// Latest live reading on disk (plus the message rate since the previous write), so `--status` can show whether the Pulse stream works.
+struct LiveSnapshotRecord: Codable {
+    let measurement: LiveMeasurement
+    let messages: Int
+    let since: Date
+    let writtenAt: Date
+}
+
 enum LiveSnapshot {
     static var url: URL { PriceCache().url.deletingLastPathComponent().appendingPathComponent("live.json") }
-    static func write(_ m: LiveMeasurement) {
+    static func write(_ m: LiveMeasurement, messages: Int, since: Date) {
         let e = JSONEncoder(); e.dateEncodingStrategy = .iso8601
-        if let d = try? e.encode(m) { try? d.write(to: url, options: .atomic) }
+        if let d = try? e.encode(LiveSnapshotRecord(measurement: m, messages: messages, since: since, writtenAt: Date())) { try? d.write(to: url, options: .atomic) }
     }
-    static func read() -> LiveMeasurement? {
+    static func read() -> LiveSnapshotRecord? {
         guard let d = try? Data(contentsOf: url) else { return nil }
         let dec = JSONDecoder(); dec.dateDecodingStrategy = .iso8601
-        return try? dec.decode(LiveMeasurement.self, from: d)
+        return try? dec.decode(LiveSnapshotRecord.self, from: d)
     }
 }

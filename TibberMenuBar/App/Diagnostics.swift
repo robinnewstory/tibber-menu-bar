@@ -28,8 +28,12 @@ enum Diagnostics {
         if let w = Planner.cheapestWindow(in: data, hours: 2, from: Date()) {
             print("cheapest 2 h from \(f.string(from: w.start)) avg \(String(format: "%.4f", w.average))")
         }
-        if let live = LiveSnapshot.read() {
+        if let rec = LiveSnapshot.read() {
+            let live = rec.measurement
+            let span = rec.writtenAt.timeIntervalSince(rec.since)
+            let rate = span > 0 ? Double(rec.messages) / span * 60 : 0
             print("live: \(LiveMeasurement.formatPower(live.power)) at \(f.string(from: live.timestamp)) (\(Int(Date().timeIntervalSince(live.timestamp))) s ago), today \(live.accumulatedConsumption.map { String(format: "%.2f kWh", $0) } ?? "?"), cost \(live.accumulatedCost.map { String(format: "%.2f", $0) } ?? "?") \(live.currency ?? "")")
+            print("live rate: \(rec.messages) readings in \(Int(span)) s ≈ \(String(format: "%.1f", rate)) per minute")
         } else {
             print("live: no reading recorded yet")
         }
