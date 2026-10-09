@@ -51,9 +51,12 @@ public struct HomeInfo: Codable, Equatable, Identifiable, Sendable {
     public let timeZone: String
     public let city: String?
     public let hasSubscription: Bool
+    /// True when a Tibber Pulse (or similar) provides real-time readings for this home.
+    public var liveMeasurements: Bool = false
 
-    public init(id: String, nickname: String?, timeZone: String, city: String?, hasSubscription: Bool) {
+    public init(id: String, nickname: String?, timeZone: String, city: String?, hasSubscription: Bool, liveMeasurements: Bool = false) {
         self.id = id; self.nickname = nickname; self.timeZone = timeZone; self.city = city; self.hasSubscription = hasSubscription
+        self.liveMeasurements = liveMeasurements
     }
 
     public var displayName: String { nickname?.isEmpty == false ? nickname! : (city ?? "Home") }

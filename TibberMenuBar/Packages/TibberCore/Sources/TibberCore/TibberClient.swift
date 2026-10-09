@@ -18,7 +18,7 @@ public final class TibberClient {
     // MARK: Queries
 
     static let homesQuery = """
-    { viewer { homes { id appNickname timeZone address { city } currentSubscription { status } } } }
+    { viewer { websocketSubscriptionUrl homes { id appNickname timeZone address { city } features { realTimeConsumptionEnabled } currentSubscription { status } } } }
     """
 
     static func pricesQuery(homeId: String?, resolution: Resolution) -> String {
@@ -28,9 +28,16 @@ public final class TibberClient {
         return "{ viewer { \(home) { id appNickname timeZone address { city } \(selection) } } }"
     }
 
-    public func fetchHomes() async throws -> [HomeInfo] {
+    public struct Account: Equatable {
+        public let homes: [HomeInfo]
+        public let websocketURL: URL?
+    }
+
+    public func fetchHomes() async throws -> [HomeInfo] { try await fetchAccount().homes }
+
+    public func fetchAccount() async throws -> Account {
         let data: ViewerHomes = try await run(Self.homesQuery)
-        return data.viewer.homes.map(Self.homeInfo)
+        return Account(homes: data.viewer.homes.map(Self.homeInfo), websocketURL: data.viewer.websocketSubscriptionUrl.flatMap(URL.init(string:)))
     }
 
     /// Prices for `homeId`, or for the first home with a subscription when nil.
@@ -89,7 +96,8 @@ public final class TibberClient {
 
     static func homeInfo(_ h: HomeDTO) -> HomeInfo {
         HomeInfo(id: h.id, nickname: h.appNickname, timeZone: h.timeZone ?? TimeZone.current.identifier,
-                 city: h.address?.city, hasSubscription: h.currentSubscription != nil)
+                 city: h.address?.city, hasSubscription: h.currentSubscription != nil,
+                 liveMeasurements: h.features?.realTimeConsumptionEnabled ?? false)
     }
 
     static func priceData(home: HomeDTO, info: PriceInfoDTO, resolution: Resolution, fetchedAt: Date) throws -> PriceData {
@@ -114,7 +122,7 @@ struct GQLError: Decodable {
     let extensions: Extensions?
 }
 struct ViewerHomes: Decodable { let viewer: HomesViewer }
-struct HomesViewer: Decodable { let homes: [HomeDTO] }
+struct HomesViewer: Decodable { let homes: [HomeDTO]; let websocketSubscriptionUrl: String? }
 struct ViewerHome: Decodable { let viewer: HomeViewer }
 struct HomeViewer: Decodable { let home: HomeDTO? }
 struct HomeDTO: Decodable {
@@ -122,8 +130,10 @@ struct HomeDTO: Decodable {
     let appNickname: String?
     let timeZone: String?
     let address: AddressDTO?
+    let features: FeaturesDTO?
     let currentSubscription: SubscriptionDTO?
 }
+struct FeaturesDTO: Decodable { let realTimeConsumptionEnabled: Bool? }
 struct AddressDTO: Decodable { let city: String? }
 struct SubscriptionDTO: Decodable {
     let status: String?

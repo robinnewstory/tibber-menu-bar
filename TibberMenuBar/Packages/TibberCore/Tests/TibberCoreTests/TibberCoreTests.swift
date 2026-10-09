@@ -160,3 +160,94 @@ final class StubSession: URLProtocol {
     }
     override func stopLoading() {}
 }
+
+final class PlannerAndRulesTests: XCTestCase {
+    func day(_ totals: [Double], start: String) throws -> [PricePoint] {
+        let s = try XCTUnwrap(DateParsing.parse(start))
+        return totals.enumerated().map { PricePoint(startsAt: s.addingTimeInterval(Double($0.offset) * 3600), total: $0.element, currency: "EUR") }
+    }
+    let home = HomeInfo(id: "h", nickname: "Thuis", timeZone: "Europe/Amsterdam", city: nil, hasSubscription: true)
+
+    func testPlannerSearchesFromNowAcrossBothDays() throws {
+        let today = try day(Array(repeating: 0.30, count: 22) + [0.10, 0.10], start: "2026-10-09T00:00:00+02:00")
+        let tomorrow = try day([0.05, 0.05] + Array(repeating: 0.30, count: 22), start: "2026-10-10T00:00:00+02:00")
+        let data = PriceData(home: home, resolution: .hourly, today: today, tomorrow: tomorrow, fetchedAt: Date())
+        let now = try XCTUnwrap(DateParsing.parse("2026-10-09T09:30:00+02:00"))
+        let w = try XCTUnwrap(Planner.cheapestWindow(in: data, hours: 2, from: now))
+        XCTAssertEqual(w.start, DateParsing.parse("2026-10-10T00:00:00+02:00"))
+        XCTAssertEqual(w.average, 0.05, accuracy: 0.0001)
+        // a window may not start in the past, but the running slot still counts
+        let late = try XCTUnwrap(DateParsing.parse("2026-10-09T22:30:00+02:00"))
+        let w2 = try XCTUnwrap(Planner.cheapestWindow(in: data, hours: 2, from: late))
+        XCTAssertEqual(w2.start, DateParsing.parse("2026-10-10T00:00:00+02:00"))
+        XCTAssertNil(Planner.cheapestWindow(in: data, hours: 48, from: now))
+    }
+
+    func testTrendAndBackoff() {
+        let a = PricePoint(startsAt: Date(), total: 0.30, currency: "EUR")
+        XCTAssertEqual(Trend.between(current: a, next: PricePoint(startsAt: Date(), total: 0.32, currency: "EUR")), .up)
+        XCTAssertEqual(Trend.between(current: a, next: PricePoint(startsAt: Date(), total: 0.25, currency: "EUR")), .down)
+        XCTAssertEqual(Trend.between(current: a, next: PricePoint(startsAt: Date(), total: 0.303, currency: "EUR")), .flat)
+        XCTAssertNil(Trend.between(current: a, next: nil))
+        XCTAssertEqual(Backoff.delay(afterFailures: 0), 0)
+        XCTAssertEqual(Backoff.delay(afterFailures: 1), 60)
+        XCTAssertEqual(Backoff.delay(afterFailures: 4), 480)
+        XCTAssertEqual(Backoff.delay(afterFailures: 12), 1800)
+        let now = Date()
+        XCTAssertFalse(Backoff.mayRetry(failures: 2, lastAttempt: now.addingTimeInterval(-60), now: now))
+        XCTAssertTrue(Backoff.mayRetry(failures: 2, lastAttempt: now.addingTimeInterval(-121), now: now))
+        XCTAssertTrue(Backoff.mayRetry(failures: 0, lastAttempt: now, now: now))
+    }
+
+    func testNotificationRules() throws {
+        let today = try day(Array(repeating: 0.30, count: 24), start: "2026-10-09T00:00:00+02:00")
+        var tomorrow = try day(Array(repeating: 0.20, count: 24), start: "2026-10-10T00:00:00+02:00")
+        tomorrow[3] = PricePoint(startsAt: tomorrow[3].startsAt, total: 0.05, currency: "EUR")
+        tomorrow[4] = PricePoint(startsAt: tomorrow[4].startsAt, total: 0.05, currency: "EUR")
+        let data = PriceData(home: home, resolution: .hourly, today: today, tomorrow: tomorrow, fetchedAt: Date())
+        var state = NotificationState()
+        let prefs = NotificationPrefs(cheapWindowStart: true, plannerHours: 2, belowCents: 10, aboveCents: 35, tomorrowPublished: true)
+
+        // 1. tomorrow announced once
+        let now1 = try XCTUnwrap(DateParsing.parse("2026-10-09T13:05:00+02:00"))
+        var events = NotificationRules.events(data: data, prefs: prefs, state: &state, now: now1)
+        XCTAssertEqual(events.count, 1)
+        guard case .tomorrowPublished(let low, let high, _, _) = events[0] else { return XCTFail("expected tomorrowPublished") }
+        XCTAssertEqual(low, 0.05); XCTAssertEqual(high, 0.20)
+        XCTAssertEqual(state.thresholdZone, 0, "first threshold evaluation sets the zone silently")
+        events = NotificationRules.events(data: data, prefs: prefs, state: &state, now: now1)
+        XCTAssertTrue(events.isEmpty, "nothing repeats")
+
+        // 2. cheap window announced in the 10 minutes before it starts, once
+        let before = try XCTUnwrap(DateParsing.parse("2026-10-10T02:52:00+02:00"))
+        events = NotificationRules.events(data: data, prefs: prefs, state: &state, now: before)
+        guard case .cheapWindowStarts(let w, _)? = events.first else { return XCTFail("expected cheapWindowStarts, got \(events)") }
+        XCTAssertEqual(w.start, DateParsing.parse("2026-10-10T03:00:00+02:00"))
+        XCTAssertTrue(NotificationRules.events(data: data, prefs: prefs, state: &state, now: before.addingTimeInterval(60)).isEmpty)
+
+        // 3. threshold crossing announced on the transition only
+        let inWindow = try XCTUnwrap(DateParsing.parse("2026-10-10T03:10:00+02:00"))
+        events = NotificationRules.events(data: data, prefs: prefs, state: &state, now: inWindow)
+        XCTAssertEqual(events, [.belowThreshold(price: 0.05, threshold: 0.10, currency: "EUR")])
+        XCTAssertTrue(NotificationRules.events(data: data, prefs: prefs, state: &state, now: inWindow.addingTimeInterval(60)).isEmpty)
+
+        let text = NotificationRules.text(for: events[0], timeZone: data.timeZone)
+        XCTAssertTrue(text.title.contains("below"))
+    }
+
+    func testLiveProtocolParsing() throws {
+        XCTAssertEqual(LiveProtocol.parse(#"{"type":"connection_ack"}"#), .ack)
+        XCTAssertEqual(LiveProtocol.parse(#"{"type":"ping"}"#), .ping)
+        XCTAssertEqual(LiveProtocol.parse(#"{"id":"1","type":"error","payload":[{"message":"unauthorized"}]}"#), .error("unauthorized"))
+        let next = #"{"id":"1","type":"next","payload":{"data":{"liveMeasurement":{"timestamp":"2026-10-09T09:12:34.000+02:00","power":1834,"accumulatedConsumption":7.41,"accumulatedCost":1.92,"currency":"EUR","powerProduction":0,"minPower":120,"averagePower":640.5,"maxPower":4210}}}}"#
+        guard case .measurement(let m) = LiveProtocol.parse(next) else { return XCTFail("expected measurement") }
+        XCTAssertEqual(m.power, 1834)
+        XCTAssertEqual(m.accumulatedConsumption, 7.41)
+        XCTAssertEqual(m.accumulatedCost, 1.92)
+        XCTAssertEqual(m.timestamp, DateParsing.parse("2026-10-09T09:12:34+02:00"))
+        XCTAssertEqual(LiveMeasurement.formatPower(1834, locale: Locale(identifier: "en_US")), "1.8 kW")
+        XCTAssertEqual(LiveMeasurement.formatPower(640.4, locale: Locale(identifier: "en_US")), "640 W")
+        XCTAssertTrue(LiveProtocol.subscribe(homeId: "abc").contains("liveMeasurement(homeId: \\\"abc\\\")"))
+        XCTAssertTrue(LiveProtocol.connectionInit(token: "t").contains("connection_init"))
+    }
+}
