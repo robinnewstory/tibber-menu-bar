@@ -78,6 +78,9 @@ final class MathAndPolicyTests: XCTestCase {
         XCTAssertEqual(w.average, 0.11, accuracy: 0.0001)
         XCTAssertNil(PriceMath.cheapestWindow(p, slots: 10))
         XCTAssertEqual(PriceMath.relativePosition(0.25, in: s)!, 0.5, accuracy: 0.0001)
+        XCTAssertEqual(PriceMath.relativeTier(0.18, average: 0.246), .cheap)
+        XCTAssertEqual(PriceMath.relativeTier(0.25, average: 0.246), .normal)
+        XCTAssertEqual(PriceMath.relativeTier(0.34, average: 0.246), .expensive)
     }
 
     func testRefreshPolicy() throws {

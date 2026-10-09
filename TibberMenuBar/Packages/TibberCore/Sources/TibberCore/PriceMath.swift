@@ -34,6 +34,17 @@ public enum PriceMath {
         return best.map { (points[$0.0], $0.1) }
     }
 
+    /// Coloring relative to the day's average, so chart shape and colors agree (Tibber's own level compares
+    /// against several days and can call 30¢ "cheap" on an expensive day).
+    public enum RelativeTier: Equatable { case cheap, normal, expensive }
+
+    public static func relativeTier(_ value: Double, average: Double, cheapBelow: Double = 0.9, expensiveAbove: Double = 1.15) -> RelativeTier {
+        guard average > 0 else { return .normal }
+        if value < average * cheapBelow { return .cheap }
+        if value > average * expensiveAbove { return .expensive }
+        return .normal
+    }
+
     /// Where `value` sits between today's min and max, 0…1 (nil when flat).
     public static func relativePosition(_ value: Double, in stats: PriceStats) -> Double? {
         let span = stats.max.total - stats.min.total

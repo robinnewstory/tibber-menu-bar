@@ -2,23 +2,24 @@ import SwiftUI
 import Charts
 import TibberCore
 
+/// Option C: a tile dashboard. Two large tiles (price, power), three small ones (today, low/high, cheapest window),
+/// then the chart card with a day switch. Hover shows a slot in the capsule; drag also moves the price tile.
 struct PopoverView: View {
     @ObservedObject var model: PriceModel
-    /// Slot under the pointer while dragging across the chart; nil shows the current slot again.
     @State private var scrubbed: PricePoint?
+    @State private var day: ChartDay = .today
     @Environment(\.openSettings) private var openSettings
 
+    enum ChartDay: Hashable { case today, tomorrow, both }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(spacing: 10) {
             if !model.hasToken {
                 onboarding
             } else if let data = model.data {
-                header(data)
-                if model.liveSupported && model.showLivePower { liveRow(data) }
-                PriceChart(data: data, current: model.current, now: model.now, selected: $scrubbed)
-                    .frame(height: 160)
-                statsRow(data)
-                plannerRow(data)
+                topTiles(data)
+                smallTiles(data)
+                chartCard(data)
             } else if model.isLoading {
                 HStack(spacing: 8) { ProgressView().controlSize(.small); Text("Loading prices…") }.frame(maxWidth: .infinity, minHeight: 120)
             } else {
@@ -32,129 +33,196 @@ struct PopoverView: View {
         }
         .padding(12)
         .frame(width: 420)
+        .onChange(of: day) { _, _ in scrubbed = nil }
     }
 
-    // MARK: Header
+    // MARK: Top tiles
 
-    private func header(_ data: PriceData) -> some View {
+    private func topTiles(_ data: PriceData) -> some View {
         let shown = scrubbed ?? model.current
-        let isTomorrow = shown.map { !data.today.contains($0) } ?? false
-        return HStack(alignment: .firstTextBaseline) {
-            VStack(alignment: .leading, spacing: 2) {
-                if let slot = shown {
-                    Text(PriceFormatter.detailed(slot.total, currency: data.currency)).font(.system(size: 22, weight: .semibold, design: .rounded))
-                    HStack(spacing: 6) {
-                        Text(PriceFormatter.slotRange(slot, slotLength: data.resolution.slotLength, timeZone: data.timeZone))
-                        if scrubbed != nil { Text(isTomorrow ? "tomorrow" : "selected").font(.caption2).foregroundStyle(.tertiary) }
-                        if let level = slot.level {
-                            Text(level.label)
-                                .font(.caption2.weight(.semibold))
-                                .padding(.horizontal, 6).padding(.vertical, 2)
-                                .background(LevelColor.color(level).opacity(0.2), in: Capsule())
-                                .foregroundStyle(LevelColor.color(level))
+        let tier = shown.map { PriceMath.relativeTier($0.total, average: PriceMath.stats(data.today)?.average ?? $0.total) }
+        let accent = TierColor.color(tier)
+        return HStack(spacing: 10) {
+            Tile(accent: accent) {
+                VStack(alignment: .leading, spacing: 4) {
+                    caption(scrubbed == nil ? "Price now · \(shown.map { PriceFormatter.time($0.startsAt, timeZone: data.timeZone) } ?? "–")"
+                            : "\(isTomorrow(shown, data) ? "Tomorrow" : "Selected") · \(PriceFormatter.slotRange(shown!, slotLength: data.resolution.slotLength, timeZone: data.timeZone))")
+                    if let slot = shown {
+                        HStack(alignment: .firstTextBaseline, spacing: 3) {
+                            Text(bigNumber(slot.total, data)).font(.system(size: 28, weight: .bold, design: .rounded)).monospacedDigit().lineLimit(1).minimumScaleFactor(0.7)
+                            Text(bigUnit(data)).font(.caption).foregroundStyle(.secondary)
                         }
+                        HStack(spacing: 4) {
+                            Text(tier.map(TierColor.label) ?? "")
+                            if scrubbed == nil, let current = model.current, let next = data.next(after: current.startsAt) {
+                                Text("· next \(PriceFormatter.menuBar(next.total, currency: data.currency, style: .cents)) \(model.trend?.arrow ?? "")")
+                            }
+                        }
+                        .font(.caption.weight(.semibold)).foregroundStyle(accent).lineLimit(1)
+                    } else {
+                        Text("—").font(.system(size: 28, weight: .bold, design: .rounded)).foregroundStyle(.secondary)
+                        Text("no price for this moment").font(.caption).foregroundStyle(.secondary)
                     }
-                    .font(.caption).foregroundStyle(.secondary)
-                } else {
-                    Text("No price for this moment").font(.callout).foregroundStyle(.secondary)
                 }
             }
-            Spacer()
-            VStack(alignment: .trailing, spacing: 2) {
-                Text(data.home.displayName).font(.caption.weight(.medium))
-                if scrubbed == nil, let current = model.current, let next = data.next(after: current.startsAt) {
-                    Text("next \(PriceFormatter.menuBar(next.total, currency: data.currency, style: model.labelStyle)) \(model.trend?.arrow ?? "")")
-                        .font(.caption2).foregroundStyle(.secondary)
+            Tile {
+                VStack(alignment: .leading, spacing: 4) {
+                    caption("Power now")
+                    if model.liveSupported && model.showLivePower {
+                        let live = model.freshLive ?? model.live
+                        HStack(spacing: 10) {
+                            PowerGauge(fraction: gaugeFraction(live), color: live == nil ? .gray : accent)
+                            Text(live.map { LiveMeasurement.formatPower($0.power) } ?? "—")
+                                .font(.system(size: 22, weight: .bold, design: .rounded)).monospacedDigit().lineLimit(1).minimumScaleFactor(0.7)
+                                .foregroundStyle(model.freshLive == nil ? .secondary : .primary)
+                        }
+                        Text(powerSubline(live)).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                    } else {
+                        Text("—").font(.system(size: 22, weight: .bold, design: .rounded)).foregroundStyle(.secondary)
+                        Text(model.liveSupported ? "live power is off in Settings" : "needs a Tibber Pulse").font(.caption).foregroundStyle(.secondary)
+                    }
                 }
             }
         }
     }
 
-    private func liveRow(_ data: PriceData) -> some View {
-        HStack(spacing: 10) {
-            Image(systemName: "waveform.path.ecg").foregroundStyle(.secondary)
-            if let live = model.freshLive ?? model.live {
-                let stale = model.freshLive == nil
-                Text(LiveMeasurement.formatPower(live.power)).font(.system(size: 15, weight: .semibold, design: .rounded))
-                    .foregroundStyle(stale ? .secondary : .primary)
-                Text("now").font(.caption2).foregroundStyle(.tertiary)
-                if let kwh = live.accumulatedConsumption {
-                    Text("· today \(String(format: "%.1f", kwh)) kWh").font(.caption).foregroundStyle(.secondary)
-                }
-                if let cost = live.accumulatedCost {
-                    Text("· \(PriceFormatter.currencyAmount(cost, currency: live.currency ?? data.currency))").font(.caption).foregroundStyle(.secondary)
-                }
-                if stale { Text("(stale)").font(.caption2).foregroundStyle(.orange) }
-            } else {
-                Text(liveStatusText).font(.caption).foregroundStyle(.secondary)
-            }
-            Spacer()
-        }
-        .padding(.vertical, 4).padding(.horizontal, 8)
-        .background(Color.secondary.opacity(0.08), in: RoundedRectangle(cornerRadius: 6))
+    private func gaugeFraction(_ live: LiveMeasurement?) -> Double {
+        guard let live else { return 0 }
+        let ceiling = max(live.maxPower ?? 0, 1000)
+        return min(1, max(0, live.power / ceiling))
+    }
+
+    private func powerSubline(_ live: LiveMeasurement?) -> String {
+        guard let live else { return liveStatusText }
+        if model.freshLive == nil { return "last reading \(Age.text(from: live.timestamp, to: model.now))" }
+        if let peak = live.maxPower { return "peak today \(LiveMeasurement.formatPower(peak))" }
+        return "live"
     }
 
     private var liveStatusText: String {
         switch model.liveStatus {
-        case .idle: return "Live power off"
-        case .connecting: return "Connecting to Pulse…"
-        case .connected: return "Waiting for the first reading…"
-        case .reconnecting(let s): return "Pulse stream lost, reconnecting in \(s) s"
-        case .failed(let why): return "Pulse stream failed: \(why)"
+        case .idle: return "live power off"
+        case .connecting: return "connecting to Pulse…"
+        case .connected: return "waiting for a reading…"
+        case .reconnecting(let s): return "reconnecting in \(s) s"
+        case .failed(let why): return "failed: \(why)"
         }
     }
 
-    // MARK: Stats & planner
+    // MARK: Small tiles
 
-    private func statsRow(_ data: PriceData) -> some View {
+    private func smallTiles(_ data: PriceData) -> some View {
         let stats = PriceMath.stats(data.today)
-        return HStack {
-            if let s = stats {
-                stat("Low today", s.min.total, data, at: s.min.startsAt)
-                Spacer()
-                stat("Avg", s.average, data, at: nil)
-                Spacer()
-                stat("High today", s.max.total, data, at: s.max.startsAt)
+        let live = model.live
+        return HStack(spacing: 10) {
+            Tile {
+                VStack(alignment: .leading, spacing: 2) {
+                    caption("Today")
+                    Text(live?.accumulatedConsumption.map { String(format: "%.1f kWh", $0) } ?? "—").font(.system(size: 15, weight: .semibold, design: .rounded)).monospacedDigit()
+                    Text(live?.accumulatedCost.map { PriceFormatter.currencyAmount($0, currency: live?.currency ?? data.currency) } ?? "needs Pulse").font(.caption).foregroundStyle(.secondary)
+                }
             }
-            if let t = PriceMath.stats(data.tomorrow) {
-                Spacer()
-                stat("Tomorrow", t.average, data, at: nil, note: "\(PriceFormatter.menuBar(t.min.total, currency: data.currency, style: model.labelStyle))–\(PriceFormatter.menuBar(t.max.total, currency: data.currency, style: model.labelStyle))")
+            Tile {
+                VStack(alignment: .leading, spacing: 2) {
+                    caption("Low · high")
+                    if let s = stats {
+                        Text("\(cents(s.min.total)) · \(cents(s.max.total))").font(.system(size: 15, weight: .semibold, design: .rounded)).monospacedDigit().lineLimit(1).minimumScaleFactor(0.8)
+                        Text("\(PriceFormatter.time(s.min.startsAt, timeZone: data.timeZone)) · \(PriceFormatter.time(s.max.startsAt, timeZone: data.timeZone))").font(.caption).foregroundStyle(.secondary)
+                    } else {
+                        Text("—").font(.system(size: 15, weight: .semibold, design: .rounded))
+                        Text("no prices").font(.caption).foregroundStyle(.secondary)
+                    }
+                }
+            }
+            Tile {
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(spacing: 4) {
+                        Menu {
+                            ForEach(Planner.durationsHours, id: \.self) { h in
+                                Button("\(h) h") { model.notificationPrefs.plannerHours = h }
+                            }
+                        } label: {
+                            Text("Cheapest \(model.notificationPrefs.plannerHours) h")
+                        }
+                        .menuStyle(.borderlessButton).menuIndicator(.visible).fixedSize()
+                        .font(.caption2.weight(.semibold)).foregroundStyle(.secondary)
+                        Spacer(minLength: 0)
+                        Button {
+                            model.notificationPrefs.cheapWindowStart.toggle()
+                        } label: {
+                            Image(systemName: model.notificationPrefs.cheapWindowStart ? "bell.fill" : "bell")
+                                .font(.system(size: 10)).foregroundStyle(model.notificationPrefs.cheapWindowStart ? Color.accentColor : Color.secondary)
+                        }
+                        .buttonStyle(.plain).help("Notify me 10 minutes before this window starts")
+                    }
+                    if let w = model.plannedWindow {
+                        Text(PriceFormatter.time(w.start, timeZone: data.timeZone) + (data.today.contains { $0.startsAt == w.start } ? "" : " tmrw"))
+                            .font(.system(size: 15, weight: .semibold, design: .rounded)).monospacedDigit().lineLimit(1).minimumScaleFactor(0.8)
+                        Text("avg \(cents(w.average))").font(.caption).foregroundStyle(.secondary)
+                    } else {
+                        Text("—").font(.system(size: 15, weight: .semibold, design: .rounded))
+                        Text("no window in range").font(.caption).foregroundStyle(.secondary)
+                    }
+                }
             }
         }
     }
 
-    private func stat(_ title: String, _ value: Double, _ data: PriceData, at: Date?, note: String? = nil) -> some View {
-        VStack(alignment: .leading, spacing: 0) {
-            Text(title).font(.caption2).foregroundStyle(.secondary)
-            HStack(spacing: 4) {
-                Text(PriceFormatter.menuBar(value, currency: data.currency, style: model.labelStyle)).font(.caption.weight(.medium))
-                if let at { Text(PriceFormatter.time(at, timeZone: data.timeZone)).font(.caption2).foregroundStyle(.secondary) }
-                if let note { Text(note).font(.caption2).foregroundStyle(.secondary) }
+    // MARK: Chart card
+
+    private func chartCard(_ data: PriceData) -> some View {
+        let points: [PricePoint]
+        switch day {
+        case .today: points = data.today
+        case .tomorrow: points = data.tomorrow
+        case .both: points = data.all
+        }
+        return Tile {
+            VStack(alignment: .leading, spacing: 6) {
+                HStack {
+                    Text(day == .tomorrow ? "Tomorrow" : (day == .both ? "Today & tomorrow" : "Today")).font(.caption.weight(.semibold))
+                    Spacer()
+                    Picker("", selection: $day) {
+                        Text("Today").tag(ChartDay.today)
+                        Text("Tomorrow").tag(ChartDay.tomorrow)
+                        if data.hasTomorrow { Text("Both").tag(ChartDay.both) }
+                    }
+                    .pickerStyle(.segmented).labelsHidden().controlSize(.mini).fixedSize()
+                    .disabled(!data.hasTomorrow)
+                }
+                PriceChart(points: points, data: data, current: day == .tomorrow ? nil : model.current, now: model.now,
+                           showMidnight: day == .both, selected: $scrubbed)
+                    .frame(height: 130)
             }
         }
     }
 
-    private func plannerRow(_ data: PriceData) -> some View {
-        HStack(spacing: 6) {
-            Text("Cheapest").font(.caption).foregroundStyle(.secondary)
-            Picker("", selection: Binding(get: { model.notificationPrefs.plannerHours }, set: { model.notificationPrefs.plannerHours = $0 })) {
-                ForEach(Planner.durationsHours, id: \.self) { Text("\($0) h").tag($0) }
-            }
-            .labelsHidden().controlSize(.small).frame(width: 64)
-            if let w = model.plannedWindow {
-                let tomorrow = !data.today.contains { $0.startsAt == w.start }
-                Text("\(PriceFormatter.time(w.start, timeZone: data.timeZone))–\(PriceFormatter.time(w.end, timeZone: data.timeZone))\(tomorrow ? " tomorrow" : "") · avg \(PriceFormatter.menuBar(w.average, currency: data.currency, style: model.labelStyle))")
-                    .font(.caption)
-            } else {
-                Text("no window in range").font(.caption).foregroundStyle(.secondary)
-            }
-            Spacer()
-            Toggle(isOn: Binding(get: { model.notificationPrefs.cheapWindowStart }, set: { model.notificationPrefs.cheapWindowStart = $0 })) {
-                Image(systemName: model.notificationPrefs.cheapWindowStart ? "bell.fill" : "bell")
-            }
-            .toggleStyle(.button).buttonStyle(.borderless).controlSize(.small)
-            .help("Notify me 10 minutes before this window starts")
+    // MARK: Pieces
+
+    private func caption(_ text: String) -> some View {
+        Text(text.uppercased()).font(.system(size: 9, weight: .semibold)).tracking(0.6).foregroundStyle(.secondary).lineLimit(1)
+    }
+
+    private func cents(_ total: Double) -> String { PriceFormatter.menuBar(total, currency: model.data?.currency ?? "EUR", style: .cents) }
+
+    private func bigNumber(_ total: Double, _ data: PriceData) -> String {
+        switch model.labelStyle {
+        case .cents: return PriceFormatter.menuBar(total, currency: data.currency, style: .cents).replacingOccurrences(of: PriceFormatter.centSymbol(for: data.currency), with: "")
+        case .currency: return PriceFormatter.menuBar(total, currency: data.currency, style: .currency)
+        case .plain: return PriceFormatter.menuBar(total, currency: data.currency, style: .plain)
         }
+    }
+
+    private func bigUnit(_ data: PriceData) -> String {
+        switch model.labelStyle {
+        case .cents: return "\(PriceFormatter.centSymbol(for: data.currency).trimmingCharacters(in: .whitespaces))/kWh"
+        case .currency, .plain: return "/kWh"
+        }
+    }
+
+    private func isTomorrow(_ slot: PricePoint?, _ data: PriceData) -> Bool {
+        guard let slot else { return false }
+        return !data.today.contains(slot)
     }
 
     private var onboarding: some View {
@@ -187,6 +255,64 @@ struct PopoverView: View {
                 .buttonStyle(.borderless).disabled(model.isLoading || !model.hasToken).help("Refresh now")
             Button { openSettings(); NSApp.activate(ignoringOtherApps: true) } label: { Image(systemName: "gearshape") }.buttonStyle(.borderless).help("Settings")
             Button { NSApp.terminate(nil) } label: { Image(systemName: "power") }.buttonStyle(.borderless).help("Quit")
+        }
+    }
+}
+
+// MARK: - Building blocks
+
+/// A rounded tile with the dashboard's quiet fill and an optional colored accent bar on the left.
+struct Tile<Content: View>: View {
+    var accent: Color? = nil
+    @ViewBuilder let content: () -> Content
+
+    var body: some View {
+        HStack(spacing: 0) {
+            if let accent {
+                RoundedRectangle(cornerRadius: 2).fill(accent).frame(width: 3).padding(.vertical, 10)
+            }
+            content()
+                .padding(.horizontal, accent == nil ? 12 : 10)
+                .padding(.vertical, 10)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+    }
+}
+
+/// Half-circle gauge for the live draw relative to today's peak.
+struct PowerGauge: View {
+    let fraction: Double
+    let color: Color
+
+    var body: some View {
+        ZStack {
+            Circle().trim(from: 0, to: 0.5)
+                .stroke(Color.primary.opacity(0.12), style: StrokeStyle(lineWidth: 5, lineCap: .round))
+            Circle().trim(from: 0, to: 0.5 * fraction)
+                .stroke(color, style: StrokeStyle(lineWidth: 5, lineCap: .round))
+        }
+        .rotationEffect(.degrees(180))
+        .frame(width: 44, height: 44)
+        .frame(height: 26, alignment: .top)
+        .clipped()
+        .accessibilityLabel("Power gauge \(Int(fraction * 100)) percent of today's peak")
+    }
+}
+
+enum TierColor {
+    static func color(_ tier: PriceMath.RelativeTier?) -> Color {
+        switch tier {
+        case .cheap?: return .teal
+        case .expensive?: return .orange
+        case .normal?, nil: return .gray
+        }
+    }
+    static func label(_ tier: PriceMath.RelativeTier) -> String {
+        switch tier {
+        case .cheap: return "Cheap"
+        case .normal: return "Normal"
+        case .expensive: return "Expensive"
         }
     }
 }
@@ -226,30 +352,30 @@ extension PriceFormatter {
     }
 }
 
-/// One continuous strip: today and, once published, tomorrow. Hover shows a slot's price in the
-/// capsule; dragging also moves the header, and releasing snaps back to the current slot.
+/// Bars colored relative to the day's average; past slots dimmed. Hover shows a slot in the capsule,
+/// dragging also moves the price tile, and releasing snaps back to the current slot.
 struct PriceChart: View {
+    let points: [PricePoint]
     let data: PriceData
     let current: PricePoint?
     let now: Date
+    let showMidnight: Bool
     @Binding var selected: PricePoint?
     @State private var hovered: PricePoint?
 
-    private var points: [PricePoint] { data.all }
     private var resolution: Resolution { data.resolution }
     private var timeZone: TimeZone { data.timeZone }
-    private var stats: PriceStats? { PriceMath.stats(points) }
-    /// The slot the marker sits on: scrubbed, else hovered, else current.
+    private var average: Double { PriceMath.stats(points)?.average ?? 0 }
     private var marker: PricePoint? { selected ?? hovered ?? current }
     private var markerDate: Date? {
         if let slot = selected ?? hovered { return slot.startsAt.addingTimeInterval(resolution.slotLength / 2) }
         return current == nil ? nil : now
     }
-    private var midnight: Date? { data.tomorrow.first?.startsAt }
+    private var markerIsCurrent: Bool { selected == nil && hovered == nil }
 
     var body: some View {
         if points.isEmpty {
-            Text("No prices yet").font(.callout).foregroundStyle(.secondary).frame(maxWidth: .infinity, maxHeight: .infinity)
+            Text("No prices for this day yet").font(.callout).foregroundStyle(.secondary).frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
             Chart {
                 ForEach(points) { p in
@@ -260,36 +386,28 @@ struct PriceChart: View {
                     )
                     .foregroundStyle(barColor(p))
                 }
-                if let s = PriceMath.stats(data.today) {
-                    RuleMark(y: .value("Average", s.average * 100))
-                        .lineStyle(StrokeStyle(lineWidth: 1, dash: [3, 3]))
-                        .foregroundStyle(.secondary.opacity(0.6))
-                }
-                if let midnight {
+                if showMidnight, let midnight = data.tomorrow.first?.startsAt {
                     RuleMark(x: .value("Midnight", midnight))
                         .lineStyle(StrokeStyle(lineWidth: 1, dash: [2, 3]))
                         .foregroundStyle(.secondary.opacity(0.5))
-                        .annotation(position: .top, alignment: .leading) {
-                            Text("tomorrow").font(.system(size: 8)).foregroundStyle(.secondary)
-                        }
                 }
                 if let marker, let markerDate {
                     RuleMark(x: .value("Marker", markerDate))
                         .lineStyle(StrokeStyle(lineWidth: selected == nil ? 1 : 1.5))
-                        .foregroundStyle(.primary.opacity(0.7))
+                        .foregroundStyle(.primary.opacity(0.6))
                         .annotation(position: .top, alignment: .center) {
-                            Text(marker.startsAt == current?.startsAt && selected == nil && hovered == nil
-                                 ? String(format: "%.1f", marker.total * 100)
+                            Text(markerIsCurrent ? String(format: "%.1f", marker.total * 100)
                                  : "\(String(format: "%.1f", marker.total * 100)) · \(PriceFormatter.time(marker.startsAt, timeZone: timeZone))")
                                 .font(.system(size: 9, weight: .semibold))
-                                .padding(.horizontal, 4).padding(.vertical, 1)
-                                .background(.regularMaterial, in: Capsule())
+                                .padding(.horizontal, 5).padding(.vertical, 1)
+                                .background(markerIsCurrent ? AnyShapeStyle(TierColor.color(.cheap)) : AnyShapeStyle(.regularMaterial), in: Capsule())
+                                .foregroundStyle(markerIsCurrent ? Color.black.opacity(0.85) : Color.primary)
                         }
                 }
             }
             .chartXAxis {
-                AxisMarks(values: .stride(by: .hour, count: data.hasTomorrow ? 6 : 3)) { value in
-                    AxisGridLine()
+                AxisMarks(values: .stride(by: .hour, count: points.count > 100 ? 6 : 3)) { value in
+                    AxisGridLine().foregroundStyle(.primary.opacity(0.08))
                     AxisValueLabel {
                         if let d = value.as(Date.self) { Text(PriceFormatter.time(d, timeZone: timeZone)).font(.system(size: 9)) }
                     }
@@ -297,7 +415,7 @@ struct PriceChart: View {
             }
             .chartYAxis {
                 AxisMarks(position: .trailing) { value in
-                    AxisGridLine()
+                    AxisGridLine().foregroundStyle(.primary.opacity(0.08))
                     AxisValueLabel {
                         if let v = value.as(Double.self) { Text(String(format: "%.0f", v)).font(.system(size: 9)) }
                     }
@@ -337,7 +455,6 @@ struct PriceChart: View {
         return start...end
     }
 
-    /// The slot containing the given date, clamped to the chart's range.
     private func slot(at date: Date) -> PricePoint? {
         guard let first = points.first, let last = points.last else { return nil }
         if date <= first.startsAt { return first }
@@ -346,8 +463,9 @@ struct PriceChart: View {
     }
 
     private func barColor(_ p: PricePoint) -> Color {
-        let base = LevelColor.color(p.level)
+        let base = TierColor.color(PriceMath.relativeTier(p.total, average: average))
         if let marker, marker.startsAt == p.startsAt { return base }
-        return base.opacity(0.55)
+        let isPast = p.startsAt.addingTimeInterval(resolution.slotLength) <= now
+        return base.opacity(isPast ? 0.35 : 0.7)
     }
 }
