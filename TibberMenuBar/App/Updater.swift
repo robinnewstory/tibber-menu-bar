@@ -57,7 +57,8 @@ final class UpdateCheckReporter: NSObject, SPUUpdaterDelegate {
     }
 
     func updater(_ updater: SPUUpdater, didAbortWithError error: Error) {
-        print("check failed: \(error.localizedDescription)")
+        // "No update" also ends with an abort; it was already reported above.
+        if !done { print("check failed: \(error.localizedDescription)") }
         done = true
     }
 }

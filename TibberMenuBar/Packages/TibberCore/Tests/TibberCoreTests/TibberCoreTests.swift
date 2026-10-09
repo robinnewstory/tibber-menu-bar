@@ -126,8 +126,9 @@ final class MathAndPolicyTests: XCTestCase {
     }
 
     func testTokenStoreAndCacheRoundTrip() throws {
-        var backing: String?
-        let store = TokenStore(read: { backing }, write: { backing = $0 })
+        final class Backing: @unchecked Sendable { var value: String? }
+        let backing = Backing()
+        let store = TokenStore(read: { backing.value }, write: { backing.value = $0 })
         XCTAssertNil(try store.load())
         try store.save("  abc \n")
         XCTAssertEqual(try store.load(), "abc")
@@ -147,9 +148,9 @@ final class MathAndPolicyTests: XCTestCase {
 
 /// URLProtocol stub so the client can be exercised without the network.
 final class StubSession: URLProtocol {
-    static var status = 200
-    static var body = ""
-    static var lastRequest: URLRequest?
+    nonisolated(unsafe) static var status = 200
+    nonisolated(unsafe) static var body = ""
+    nonisolated(unsafe) static var lastRequest: URLRequest?
 
     static func session(status: Int, body: String) -> URLSession {
         Self.status = status
