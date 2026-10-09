@@ -6,6 +6,25 @@
     <description>Updates for Tibber Menu Bar</description>
     <language>en</language>
     <item>
+      <title>Tibber Menu Bar 0.3.0</title>
+      <pubDate>Fri, 09 Oct 2026 09:53:54 +0000</pubDate>
+      <sparkle:version>202610091153</sparkle:version>
+      <sparkle:shortVersionString>0.3.0</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>14.0.0</sparkle:minimumSystemVersion>
+      <link>https://robinnewstory.github.io/tibber-menu-bar/</link>
+      <description sparkle:format="markdown"><![CDATA[## 0.3.0
+
+Fixes for the eight issues reported by @thijsvandberg, thanks!
+
+- Cheap-window notification came again every slot while the window ran; now once per window (#3)
+- Live power never started when the app launched before the network was up, e.g. at login (#4)
+- Live websocket scheduled two reconnects per failure and leaked sockets (#5); a silent connection is now replaced after 60 s (#6)
+- Changing the home or resolution during a fetch was ignored (#7)
+- Disconnect now removes the cached prices, the last live reading and the notification state (#10)
+- Home id is sent as a GraphQL variable (#8); the token only goes to a secure websocket on tibber.com (#9)]]></description>
+      <enclosure url="https://github.com/robinnewstory/tibber-menu-bar/releases/download/v0.3.0/Tibber-Menu-Bar.zip" length="3682008" type="application/octet-stream" sparkle:edSignature="bjRRWzpWAjhL7jCJyrcpIp2HdT87WBj9WIGv5XEf6+qs/VM5Msc31WV2VoaVC0qFXDePVdIXdk8LdWHao8blDA=="/>
+    </item>
+    <item>
       <title>Tibber Menu Bar 0.2.0</title>
       <pubDate>Fri, 09 Oct 2026 09:35:16 +0000</pubDate>
       <sparkle:version>202610091135</sparkle:version>
