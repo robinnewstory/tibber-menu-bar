@@ -69,18 +69,28 @@ public enum PriceFormatter {
     }
 
     public static func slotRange(_ point: PricePoint, slotLength: TimeInterval, timeZone: TimeZone, locale: Locale = .current) -> String {
-        let f = DateFormatter()
-        f.locale = locale
-        f.timeZone = timeZone
-        f.dateFormat = "HH:mm"
-        return "\(f.string(from: point.startsAt))–\(f.string(from: point.startsAt.addingTimeInterval(slotLength)))"
+        "\(time(point.startsAt, timeZone: timeZone, locale: locale))–\(time(point.startsAt.addingTimeInterval(slotLength), timeZone: timeZone, locale: locale))"
     }
 
+    /// Clock time in the locale's own convention: "14:15" or "2:15 PM".
     public static func time(_ date: Date, timeZone: TimeZone, locale: Locale = .current) -> String {
         let f = DateFormatter()
         f.locale = locale
         f.timeZone = timeZone
-        f.dateFormat = "HH:mm"
+        f.setLocalizedDateFormatFromTemplate("jmm")
         return f.string(from: date)
+    }
+
+    /// Short axis label for a whole hour: "15:00" where the locale uses a 24-hour clock, "3 PM" where it doesn't.
+    public static func hourLabel(_ date: Date, timeZone: TimeZone, locale: Locale = .current) -> String {
+        let f = DateFormatter()
+        f.locale = locale
+        f.timeZone = timeZone
+        f.setLocalizedDateFormatFromTemplate(uses12HourClock(locale) ? "ja" : "Hmm")
+        return f.string(from: date)
+    }
+
+    public static func uses12HourClock(_ locale: Locale) -> Bool {
+        DateFormatter.dateFormat(fromTemplate: "j", options: 0, locale: locale)?.contains("a") ?? false
     }
 }

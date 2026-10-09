@@ -3,6 +3,7 @@ import TibberCore
 
 struct SettingsView: View {
     @ObservedObject var model: PriceModel
+    @ObservedObject private var updater = Updater.shared
     @State private var tokenInput = ""
     @State private var connecting = false
     @State private var accountMessage: String?
@@ -72,6 +73,9 @@ struct SettingsView: View {
             Picker("Cheap and expensive mean", selection: $model.prices.levelSource) {
                 Text("Tibber's level, compared with recent days").tag(LevelSource.tibber)
                 Text("Below or above today's average").tag(LevelSource.average)
+            }
+            Picker("Level colors", selection: $model.prices.palette) {
+                ForEach(PriceOptions.Palette.allCases, id: \.self) { Text($0.label).tag($0) }
             }
         } header: {
             Text("Prices")
@@ -170,7 +174,13 @@ struct SettingsView: View {
     private var generalSection: some View {
         Section {
             Toggle("Launch at login", isOn: Binding(get: { model.launchAtLogin }, set: { model.launchAtLogin = $0 }))
-            LabeledContent("Version", value: Self.versionText)
+            Toggle("Check for updates automatically", isOn: Binding(get: { updater.automaticallyChecksForUpdates }, set: { updater.automaticallyChecksForUpdates = $0 }))
+            LabeledContent("Version") {
+                HStack {
+                    Text(verbatim: Self.versionText)
+                    Button("Check for Updates…") { updater.checkForUpdates() }.disabled(!updater.canCheckForUpdates).controlSize(.small)
+                }
+            }
             if let error = model.lastError {
                 LabeledContent("Last problem") {
                     Text(error).foregroundStyle(.orange).multilineTextAlignment(.trailing).fixedSize(horizontal: false, vertical: true)

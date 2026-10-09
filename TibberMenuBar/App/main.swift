@@ -9,9 +9,11 @@ TibberClient.setAppVersion(Bundle.main.infoDictionary?["CFBundleShortVersionStri
 //   "Tibber Menu Bar" --check-token   verify the stored token against the API
 //   "Tibber Menu Bar" --fetch         fetch prices now and update the cache
 //   "Tibber Menu Bar" --snapshot f.png render the popover with demo data (--dark, --menubar)
+//   "Tibber Menu Bar" --check-updates  ask the Sparkle feed whether a newer version exists
 if CommandLine.arguments.contains("--status") { Diagnostics.printStatus(); exit(0) }
 if CommandLine.arguments.contains("--check-token") { Diagnostics.checkToken(); exit(0) }
 if CommandLine.arguments.contains("--fetch") { Diagnostics.fetch(); exit(0) }
 if CommandLine.arguments.contains("--dump") { Diagnostics.dumpToday(); exit(0) }
+if CommandLine.arguments.contains("--check-updates") { UpdateCheckReporter.run(); exit(0) }
 if CommandLine.arguments.contains("--snapshot") { MainActor.assumeIsolated { Snapshot.run(arguments: CommandLine.arguments) }; exit(0) }
 TibberMenuBarApp.main()

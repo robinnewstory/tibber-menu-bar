@@ -3,8 +3,8 @@ import Foundation
 /// Minimal GraphQL client for api.tibber.com. Only what the menu bar needs: homes and price info.
 public final class TibberClient {
     public static let endpoint = URL(string: "https://api.tibber.com/v1-beta/gql")!
-    /// Identifies the app to Tibber, as their API guidelines ask. The app sets the version at launch.
-    public static var userAgent = "TibberMenuBar (macOS; +https://github.com/robinnewstory/tibber-menu-bar)"
+    /// Identifies the app to Tibber, as their API guidelines ask. Set once at launch, before any request.
+    nonisolated(unsafe) public static var userAgent = "TibberMenuBar (macOS; +https://github.com/robinnewstory/tibber-menu-bar)"
 
     public static func setAppVersion(_ version: String) {
         userAgent = "TibberMenuBar/\(version) (macOS; +https://github.com/robinnewstory/tibber-menu-bar)"
@@ -160,10 +160,11 @@ struct PriceDTO: Decodable {
 
 /// Tibber timestamps look like "2025-10-01T00:00:00.000+02:00"; be lenient about fractional seconds.
 public enum DateParsing {
-    private static let withFraction: ISO8601DateFormatter = {
+    // ISO8601DateFormatter is thread-safe (Apple's docs), it just isn't marked Sendable.
+    nonisolated(unsafe) private static let withFraction: ISO8601DateFormatter = {
         let f = ISO8601DateFormatter(); f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]; return f
     }()
-    private static let plain: ISO8601DateFormatter = {
+    nonisolated(unsafe) private static let plain: ISO8601DateFormatter = {
         let f = ISO8601DateFormatter(); f.formatOptions = [.withInternetDateTime]; return f
     }()
     public static func parse(_ s: String) -> Date? { withFraction.date(from: s) ?? plain.date(from: s) }

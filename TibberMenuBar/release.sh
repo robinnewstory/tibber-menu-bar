@@ -11,7 +11,9 @@ TAG="v$VERSION"
 ASSET="Tibber-Menu-Bar.zip"
 OUT="$ROOT/.tools/release"
 
+SPARKLE="$ROOT/.tools/sparkle/bin"
 cd "$ROOT"
+[[ -x "$SPARKLE/sign_update" ]] || { echo "Sparkle tools missing: extract Sparkle-<version>.tar.xz from github.com/sparkle-project/Sparkle/releases into $ROOT/.tools/sparkle/" >&2; exit 1; }
 [[ -z "$(git status --porcelain)" ]] || { echo "Commit or stash your changes first." >&2; exit 1; }
 gh auth status >/dev/null 2>&1 || { echo "Not logged in: run gh auth login" >&2; exit 1; }
 if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then echo "Tag $TAG already exists." >&2; exit 1; fi
@@ -31,10 +33,20 @@ BUILT="$(defaults read "$APP/Contents/Info" CFBundleShortVersionString)"
 [[ "$BUILT" == "$VERSION" ]] || { echo "Built version $BUILT does not match $VERSION" >&2; exit 1; }
 
 rm -rf "$OUT" && mkdir -p "$OUT"
-ditto -c -k --keepParent "$APP" "$OUT/$ASSET"
+ditto -c -k --sequesterRsrc --keepParent "$APP" "$OUT/$ASSET"
 SHA="$(shasum -a 256 "$OUT/$ASSET" | cut -d' ' -f1)"
 
-git add TibberMenuBar/project.yml
+# Sparkle: EdDSA signature from the key in the login Keychain, then the appcast entry (served from docs/ by Pages).
+SIGNATURE_LINE="$("$SPARKLE/sign_update" "$OUT/$ASSET")"
+ED_SIGNATURE="$(print -r -- "$SIGNATURE_LINE" | sed -n 's/.*sparkle:edSignature="\([^"]*\)".*/\1/p')"
+LENGTH="$(print -r -- "$SIGNATURE_LINE" | sed -n 's/.*length="\([^"]*\)".*/\1/p')"
+[[ -n "$ED_SIGNATURE" && -n "$LENGTH" ]] || { echo "sign_update gave no signature: $SIGNATURE_LINE" >&2; exit 1; }
+BUILD="$(defaults read "$APP/Contents/Info" CFBundleVersion)"
+print -r -- "$NOTES" > "$OUT/notes.md"
+node "$HERE/Scripts/appcast.js" "$ROOT/docs/appcast.xml" "$VERSION" "$BUILD" \
+  "https://github.com/robinnewstory/tibber-menu-bar/releases/download/$TAG/$ASSET" "$LENGTH" "$ED_SIGNATURE" "$OUT/notes.md"
+
+git add TibberMenuBar/project.yml docs/appcast.xml
 git diff --cached --quiet || git commit -q -m "Release $TAG"
 git tag -a "$TAG" -m "Tibber Menu Bar $VERSION"
 git push -q origin HEAD "$TAG"

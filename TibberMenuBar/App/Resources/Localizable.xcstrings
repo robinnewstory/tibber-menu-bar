@@ -117,6 +117,64 @@
         }
       }
     },
+    "%@, solar export %@ kWh": {
+      "localizations": {
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@, soleksport %2$@ kWh"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@, Solareinspeisung %2$@ kWh"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@, exportación solar %2$@ kWh"
+          }
+        },
+        "fi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@, aurinkovienti %2$@ kWh"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@, export solaire %2$@ kWh"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@, esportazione solare %2$@ kWh"
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@, soleksport %2$@ kWh"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@, zonne-export %2$@ kWh"
+          }
+        },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@, solexport %2$@ kWh"
+          }
+        }
+      }
+    },
     "%lld d ago": {
       "localizations": {
         "da": {
@@ -1751,6 +1809,180 @@
         }
       }
     },
+    "Check for Updates…": {
+      "localizations": {
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Søg efter opdateringer…"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nach Updates suchen…"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Buscar actualizaciones…"
+          }
+        },
+        "fi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Etsi päivityksiä…"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rechercher des mises à jour…"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Controlla aggiornamenti…"
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Se etter oppdateringer…"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zoek naar updates…"
+          }
+        },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sök efter uppdateringar…"
+          }
+        }
+      }
+    },
+    "Check for updates automatically": {
+      "localizations": {
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Søg automatisk efter opdateringer"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automatisch nach Updates suchen"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Buscar actualizaciones automáticamente"
+          }
+        },
+        "fi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Etsi päivityksiä automaattisesti"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rechercher automatiquement les mises à jour"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Controlla automaticamente gli aggiornamenti"
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Se etter oppdateringer automatisk"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automatisch naar updates zoeken"
+          }
+        },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sök efter uppdateringar automatiskt"
+          }
+        }
+      }
+    },
+    "Colorblind-friendly": {
+      "localizations": {
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Farveblindvenlig"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Farbenblind-freundlich"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apto para daltónicos"
+          }
+        },
+        "fi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Värisokeusystävällinen"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Adapté au daltonisme"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Adatto ai daltonici"
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fargeblindvennlig"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kleurenblindvriendelijk"
+          }
+        },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Färgblindvänlig"
+          }
+        }
+      }
+    },
     "Compact": {
       "localizations": {
         "da": {
@@ -2621,6 +2853,64 @@
         }
       }
     },
+    "Energy %@ plus taxes and fees %@, per kWh": {
+      "localizations": {
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Energi %1$@ plus afgifter og gebyrer %2$@, pr. kWh"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Energie %1$@ plus Steuern und Abgaben %2$@, pro kWh"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Energía %1$@ más impuestos y tasas %2$@, por kWh"
+          }
+        },
+        "fi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Energia %1$@ plus verot ja maksut %2$@, per kWh"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Énergie %1$@ plus taxes et frais %2$@, par kWh"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Energia %1$@ più tasse e oneri %2$@, per kWh"
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Energi %1$@ pluss avgifter og gebyrer %2$@, per kWh"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Energie %1$@ plus belastingen en kosten %2$@, per kWh"
+          }
+        },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Energi %1$@ plus skatter och avgifter %2$@, per kWh"
+          }
+        }
+      }
+    },
     "Expensive": {
       "localizations": {
         "da": {
@@ -3139,6 +3429,64 @@
           "stringUnit": {
             "state": "translated",
             "value": "Öppna vid inloggning: %@"
+          }
+        }
+      }
+    },
+    "Level colors": {
+      "localizations": {
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Niveaufarver"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Niveau-Farben"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Colores de nivel"
+          }
+        },
+        "fi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tasojen värit"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couleurs des niveaux"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Colori dei livelli"
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nivåfarger"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Niveaukleuren"
+          }
+        },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nivåfärger"
           }
         }
       }
@@ -5933,6 +6281,64 @@
         }
       }
     },
+    "Standard": {
+      "localizations": {
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Standard"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Standard"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Estándar"
+          }
+        },
+        "fi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vakio"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Standard"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Standard"
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Standard"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Standaard"
+          }
+        },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Standard"
+          }
+        }
+      }
+    },
     "Start": {
       "localizations": {
         "da": {
@@ -7383,6 +7789,64 @@
         }
       }
     },
+    "Total price per kWh, taxes and fees included": {
+      "localizations": {
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Samlet pris pr. kWh, inklusive afgifter og gebyrer"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gesamtpreis pro kWh, inklusive Steuern und Abgaben"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Precio total por kWh, impuestos y tasas incluidos"
+          }
+        },
+        "fi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kokonaishinta per kWh, verot ja maksut mukaan lukien"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prix total par kWh, taxes et frais compris"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prezzo totale per kWh, tasse e oneri inclusi"
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Totalpris per kWh, inkludert avgifter og gebyrer"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Totaalprijs per kWh, inclusief belastingen en kosten"
+          }
+        },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Totalpris per kWh, inklusive skatter och avgifter"
+          }
+        }
+      }
+    },
     "Trend arrow": {
       "localizations": {
         "da": {
@@ -8191,6 +8655,180 @@
           "stringUnit": {
             "state": "translated",
             "value": "ansluter till Pulse…"
+          }
+        }
+      }
+    },
+    "energy %@ · tax %@": {
+      "localizations": {
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "energi %1$@ · afgift %2$@"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Energie %1$@ · Steuern %2$@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "energía %1$@ · impuestos %2$@"
+          }
+        },
+        "fi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "energia %1$@ · vero %2$@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "énergie %1$@ · taxes %2$@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "energia %1$@ · tasse %2$@"
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "energi %1$@ · avgift %2$@"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "energie %1$@ · belasting %2$@"
+          }
+        },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "energi %1$@ · skatt %2$@"
+          }
+        }
+      }
+    },
+    "exporting to the grid": {
+      "localizations": {
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "eksporterer til nettet"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "speist ins Netz ein"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "exportando a la red"
+          }
+        },
+        "fi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "syöttää verkkoon"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "injection dans le réseau"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "immissione in rete"
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "eksporterer til nettet"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "levert terug aan het net"
+          }
+        },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "exporterar till nätet"
+          }
+        }
+      }
+    },
+    "exporting · %@ kWh today": {
+      "localizations": {
+        "da": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "eksport · %@ kWh i dag"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Einspeisung · %@ kWh heute"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "exportando · %@ kWh hoy"
+          }
+        },
+        "fi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "vienti · %@ kWh tänään"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "injection · %@ kWh aujourd'hui"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "immissione · %@ kWh oggi"
+          }
+        },
+        "nb": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "eksport · %@ kWh i dag"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "teruglevering · %@ kWh vandaag"
+          }
+        },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "export · %@ kWh idag"
           }
         }
       }

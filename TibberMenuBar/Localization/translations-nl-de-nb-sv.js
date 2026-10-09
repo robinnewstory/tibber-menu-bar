@@ -218,6 +218,18 @@ module.exports = {
   "turned off in Settings": { nl: "uitgeschakeld in Instellingen", de: "in den Einstellungen ausgeschaltet", nb: "slått av i Innstillinger", sv: "avstängt i Inställningar" },
   "waiting for the first reading…": { nl: "wachten op de eerste meting…", de: "warte auf die erste Messung…", nb: "venter på første måling…", sv: "väntar på första mätningen…" },
   "· next %1$@ %2$@": { nl: "· volgende %1$@ %2$@", de: "· danach %1$@ %2$@", nb: "· neste %1$@ %2$@", sv: "· nästa %1$@ %2$@" },
+  // 0.2.0: updates, price breakdown, solar, palettes
+  "%@, solar export %@ kWh": { nl: "%1$@, zonne-export %2$@ kWh", de: "%1$@, Solareinspeisung %2$@ kWh", nb: "%1$@, soleksport %2$@ kWh", sv: "%1$@, solexport %2$@ kWh" },
+  "Check for Updates…": { nl: "Zoek naar updates…", de: "Nach Updates suchen…", nb: "Se etter oppdateringer…", sv: "Sök efter uppdateringar…" },
+  "Check for updates automatically": { nl: "Automatisch naar updates zoeken", de: "Automatisch nach Updates suchen", nb: "Se etter oppdateringer automatisk", sv: "Sök efter uppdateringar automatiskt" },
+  "Colorblind-friendly": { nl: "Kleurenblindvriendelijk", de: "Farbenblind-freundlich", nb: "Fargeblindvennlig", sv: "Färgblindvänlig" },
+  "Energy %@ plus taxes and fees %@, per kWh": { nl: "Energie %1$@ plus belastingen en kosten %2$@, per kWh", de: "Energie %1$@ plus Steuern und Abgaben %2$@, pro kWh", nb: "Energi %1$@ pluss avgifter og gebyrer %2$@, per kWh", sv: "Energi %1$@ plus skatter och avgifter %2$@, per kWh" },
+  "Level colors": { nl: "Niveaukleuren", de: "Niveau-Farben", nb: "Nivåfarger", sv: "Nivåfärger" },
+  "Standard": { nl: "Standaard", de: "Standard", nb: "Standard", sv: "Standard" },
+  "Total price per kWh, taxes and fees included": { nl: "Totaalprijs per kWh, inclusief belastingen en kosten", de: "Gesamtpreis pro kWh, inklusive Steuern und Abgaben", nb: "Totalpris per kWh, inkludert avgifter og gebyrer", sv: "Totalpris per kWh, inklusive skatter och avgifter" },
+  "energy %@ · tax %@": { nl: "energie %1$@ · belasting %2$@", de: "Energie %1$@ · Steuern %2$@", nb: "energi %1$@ · avgift %2$@", sv: "energi %1$@ · skatt %2$@" },
+  "exporting to the grid": { nl: "levert terug aan het net", de: "speist ins Netz ein", nb: "eksporterer til nettet", sv: "exporterar till nätet" },
+  "exporting · %@ kWh today": { nl: "teruglevering · %@ kWh vandaag", de: "Einspeisung · %@ kWh heute", nb: "eksport · %@ kWh i dag", sv: "export · %@ kWh idag" },
 };
 // Keys that stay as-is in every language.
 module.exports.untranslated = ["—", "Pulse", "Popover"];

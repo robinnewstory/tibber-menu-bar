@@ -8,7 +8,8 @@
 <link rel="icon" href="icon.png">
 <meta property="og:title" content="Tibber Menu Bar">
 <meta property="og:description" content="Your current Tibber electricity price, always in the macOS menu bar.">
-<meta property="og:image" content="https://robinnewstory.github.io/tibber-menu-bar/popover-light.png">
+<meta property="og:image" content="https://robinnewstory.github.io/tibber-menu-bar/social.png">
+<meta name="twitter:card" content="summary_large_image">
 <style>
   :root {
     --bg: #f6f7f9; --card: #ffffff; --text: #16202c; --muted: #5b6676; --line: #e3e7ec;
@@ -93,9 +94,9 @@
       <div class="card"><h3>Price in the menu bar</h3><p>The current slot's price, updated as the quarter hours roll by. Cents, currency or plain number, with an optional trend arrow, level word and the next slot's price.</p></div>
       <div class="card"><h3>Today and tomorrow</h3><p>A chart of all 96 quarter-hour slots, colored by Tibber's price level. Hover or drag to read any slot; tomorrow appears as soon as Tibber publishes it.</p></div>
       <div class="card"><h3>Cheapest window</h3><p>Finds the cheapest 1 to 6 hour window ahead of you, shades it in the chart and can remind you ten minutes before it starts.</p></div>
-      <div class="card"><h3>Live power from Pulse</h3><p>If your home has a Tibber Pulse, the popover shows the current draw, today's usage and cost, live. Optionally in the menu bar too.</p></div>
+      <div class="card"><h3>Live power from Pulse</h3><p>If your home has a Tibber Pulse, the popover shows the current draw, today's usage and cost, live. Solar homes see export to the grid. Optionally in the menu bar too.</p></div>
       <div class="card"><h3>Notifications</h3><p>Tomorrow's prices are in, a cheap window is about to start, or the price crossed a threshold you set.</p></div>
-      <div class="card"><h3>Light on resources</h3><p>Prices are fetched a few times a day and cached. No background daemon, no accounts, no tracking.</p></div>
+      <div class="card"><h3>Light on resources</h3><p>Prices are fetched a few times a day and cached. No background daemon, no accounts, no tracking. Updates itself when a new version is out.</p></div>
     </div>
     <p class="langs">Available in English, Dutch, German, Norwegian, Swedish, Danish, Finnish, French, Spanish and Italian. The app follows your macOS language.</p>
   </section>
@@ -129,7 +130,7 @@
     <h2>Privacy</h2>
     <ul>
       <li>Your token is stored in the macOS Keychain and is only ever sent to <code>api.tibber.com</code>.</li>
-      <li>The app talks to Tibber's API and to nothing else. There is no analytics, no crash reporting, no update check.</li>
+      <li>The app talks to Tibber's API, and once a day to this site to see whether a new version exists. No analytics, no crash reporting.</li>
       <li>Prices are cached on your Mac so the menu bar fills instantly after launch.</li>
     </ul>
   </section>
@@ -140,6 +141,8 @@
     <p>macOS 14 Sonoma or later, Apple silicon and Intel.</p>
     <h3>Does the price include taxes?</h3>
     <p>It is Tibber's <em>total</em> price per kWh for your home: energy plus taxes and surcharges, the same number the Tibber app shows.</p>
+    <h3>How do I update?</h3>
+    <p>The app checks once a day and offers new versions itself, signed and verified before they are installed. You can also check from <strong>Settings → General → Check for Updates…</strong>. Homebrew users can keep using <code>brew upgrade</code>.</p>
     <h3>How do I uninstall?</h3>
     <p>Quit the app from the popover and move it to the Trash. Remove the token in Settings first if you want it gone from the Keychain.</p>
     <h3>Is this an official Tibber app?</h3>

@@ -1,0 +1,38 @@
+name: Translation fix
+description: A wrong or awkward translation
+labels: [translation]
+body:
+  - type: markdown
+    attributes:
+      value: Translations were made with help from a language model, so corrections from native speakers are very welcome.
+  - type: input
+    id: language
+    attributes:
+      label: Language
+      placeholder: Finnish
+    validations:
+      required: true
+  - type: input
+    id: english
+    attributes:
+      label: English text
+      description: The original string, as shown with macOS set to English, or as found in TibberMenuBar/Localization/translations-*.js
+    validations:
+      required: true
+  - type: input
+    id: current
+    attributes:
+      label: Current translation
+    validations:
+      required: true
+  - type: input
+    id: better
+    attributes:
+      label: Better translation
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why
+      description: Optional. Helps when the current wording is ambiguous rather than wrong.

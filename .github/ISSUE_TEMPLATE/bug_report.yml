@@ -1,0 +1,41 @@
+name: Bug report
+description: Something does not work as it should
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What did you do, what did you expect, and what happened instead?
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: App version
+      description: Settings → General → Version
+      placeholder: 0.2.0 (202610091234)
+    validations:
+      required: true
+  - type: input
+    id: macos
+    attributes:
+      label: macOS version
+      placeholder: macOS 15.1
+    validations:
+      required: true
+  - type: textarea
+    id: status
+    attributes:
+      label: Diagnostics
+      description: |
+        Optional. Paste the output of this Terminal command (it never prints your token):
+        `"/Applications/Tibber Menu Bar.app/Contents/MacOS/Tibber Menu Bar" --status`
+      render: text
+  - type: checkboxes
+    id: pulse
+    attributes:
+      label: Setup
+      options:
+        - label: My home has a Tibber Pulse
+        - label: I have more than one home on the account

@@ -44,13 +44,22 @@ struct PowerGauge: View {
 }
 
 enum TierColor {
-    static func color(_ tier: DisplayTier?) -> Color {
-        switch tier {
-        case .veryCheap?: return .green
-        case .cheap?: return .teal
-        case .expensive?: return .orange
-        case .veryExpensive?: return .red
-        case .normal?, nil: return .gray
+    static func color(_ tier: DisplayTier?, palette: PriceOptions.Palette) -> Color {
+        Color(nsColor: nsColor(tier, palette: palette))
+    }
+
+    static func nsColor(_ tier: DisplayTier?, palette: PriceOptions.Palette) -> NSColor {
+        switch (palette, tier) {
+        case (.standard, .veryCheap?): return .systemGreen
+        case (.standard, .cheap?): return .systemTeal
+        case (.standard, .expensive?): return .systemOrange
+        case (.standard, .veryExpensive?): return .systemRed
+        // Okabe–Ito blues and oranges: distinguishable with the common kinds of color blindness.
+        case (.colorblind, .veryCheap?): return NSColor(srgbRed: 0.000, green: 0.447, blue: 0.698, alpha: 1)
+        case (.colorblind, .cheap?): return NSColor(srgbRed: 0.337, green: 0.706, blue: 0.914, alpha: 1)
+        case (.colorblind, .expensive?): return NSColor(srgbRed: 0.902, green: 0.624, blue: 0.000, alpha: 1)
+        case (.colorblind, .veryExpensive?): return NSColor(srgbRed: 0.835, green: 0.369, blue: 0.000, alpha: 1)
+        case (_, .normal?), (_, nil): return .systemGray
         }
     }
 }

@@ -9,6 +9,7 @@ struct PopoverView: View {
     @ObservedObject var model: PriceModel
     @State private var scrubbed: PricePoint?
     @State private var day: ChartDay = .today
+    @State private var hoverPrice = false
     @Environment(\.openSettings) private var openSettings
     @Environment(\.isSnapshot) private var isSnapshot
 
@@ -46,7 +47,7 @@ struct PopoverView: View {
     private func topTiles(_ data: PriceData) -> some View {
         let shown = scrubbed ?? model.current
         let tier = shown.map(model.tier(for:))
-        let accent = TierColor.color(tier)
+        let accent = TierColor.color(tier, palette: model.prices.palette)
         return HStack(spacing: 12) {
             Tile(accent: accent) {
                 VStack(alignment: .leading, spacing: 4) {
@@ -57,26 +58,33 @@ struct PopoverView: View {
                             Text(bigUnit(data)).font(.caption).foregroundStyle(.secondary)
                         }
                         HStack(spacing: 4) {
-                            Text(verbatim: tier?.localizedLabel ?? "")
-                            if scrubbed == nil, let current = model.current, let next = data.next(after: current.startsAt) {
-                                Text("· next \(PriceFormatter.menuBar(next.total, currency: data.currency, style: .cents)) \(model.trend?.arrow ?? "")")
+                            if hoverPrice, let energy = slot.energy, let tax = slot.tax {
+                                Text("energy \(cents(energy)) · tax \(cents(tax))").foregroundStyle(.secondary)
+                            } else {
+                                Text(verbatim: tier?.localizedLabel ?? "")
+                                if scrubbed == nil, let current = model.current, let next = data.next(after: current.startsAt) {
+                                    Text("· next \(PriceFormatter.menuBar(next.total, currency: data.currency, style: .cents)) \(model.trend?.arrow ?? "")")
+                                }
                             }
                         }
                         .font(.caption.weight(.semibold)).foregroundStyle(accent).lineLimit(1)
+                        .animation(.easeInOut(duration: 0.15), value: hoverPrice)
                     } else {
                         Text("—").font(.system(size: 32, weight: .bold, design: .rounded)).foregroundStyle(.secondary)
                         Text("no price for this moment").font(.caption).foregroundStyle(.secondary)
                     }
                 }
             }
+            .onHover { hoverPrice = $0 }
+            .help(shown.map { breakdownHelp($0, data) } ?? "")
             Tile {
                 VStack(alignment: .leading, spacing: 4) {
                     caption(String(localized: "Power now"))
                     if model.liveEnabled {
                         let live = model.freshLive ?? model.live
                         HStack(spacing: 10) {
-                            PowerGauge(fraction: gaugeFraction(live), color: live == nil ? .gray : accent)
-                            Text(live.map { LiveMeasurement.formatPower($0.power) } ?? "—")
+                            PowerGauge(fraction: gaugeFraction(live), color: gaugeColor(live, accent))
+                            Text(live.map { LiveMeasurement.formatPower($0.netPower) } ?? "—")
                                 .font(.system(size: 26, weight: .bold, design: .rounded)).monospacedDigit().lineLimit(1).minimumScaleFactor(0.7)
                                 .foregroundStyle(model.freshLive == nil ? .secondary : .primary)
                         }
@@ -93,8 +101,21 @@ struct PopoverView: View {
 
     private func gaugeFraction(_ live: LiveMeasurement?) -> Double {
         guard let live else { return 0 }
-        let ceiling = max(live.maxPower ?? 0, 1000)
-        return min(1, max(0, live.power / ceiling))
+        if live.isExporting {
+            return min(1, max(0, -live.netPower / max(live.maxPowerProduction ?? 0, 1000)))
+        }
+        return min(1, max(0, live.power / max(live.maxPower ?? 0, 1000)))
+    }
+
+    private func gaugeColor(_ live: LiveMeasurement?, _ accent: Color) -> Color {
+        guard let live else { return .gray }
+        return live.isExporting ? .yellow : accent
+    }
+
+    /// Tooltip on the price tile: what the slot's price is made of.
+    private func breakdownHelp(_ slot: PricePoint, _ data: PriceData) -> String {
+        guard let energy = slot.energy, let tax = slot.tax else { return String(localized: "Total price per kWh, taxes and fees included") }
+        return String(localized: "Energy \(cents(energy)) plus taxes and fees \(cents(tax)), per kWh")
     }
 
     private func priceCaption(_ shown: PricePoint?, _ data: PriceData) -> String {
@@ -108,6 +129,10 @@ struct PopoverView: View {
     private func powerSubline(_ live: LiveMeasurement?) -> String {
         guard let live else { return liveStatusText }
         if model.freshLive == nil { return String(localized: "last reading \(Age.text(from: live.timestamp, to: model.now))") }
+        if live.isExporting {
+            guard let produced = live.accumulatedProduction else { return String(localized: "exporting to the grid") }
+            return String(localized: "exporting · \(produced.formatted(.number.precision(.fractionLength(1)))) kWh today")
+        }
         if let peak = live.maxPower { return String(localized: "peak today \(LiveMeasurement.formatPower(peak))") }
         return String(localized: "live")
     }
@@ -132,8 +157,8 @@ struct PopoverView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     caption(String(localized: "Today"))
                     Text(verbatim: live?.accumulatedConsumption.map { $0.formatted(.number.precision(.fractionLength(1))) + " kWh" } ?? "—").font(.system(size: 17, weight: .semibold, design: .rounded)).monospacedDigit()
-                    Text(verbatim: live?.accumulatedCost.map { PriceFormatter.currencyAmount($0, currency: live?.currency ?? data.currency) }
-                         ?? (model.liveSupported ? String(localized: "no reading yet") : String(localized: "needs a Tibber Pulse"))).font(.caption).foregroundStyle(.secondary)
+                    Text(verbatim: todaySubline(live, data)).font(.caption).foregroundStyle(.secondary).lineLimit(1).minimumScaleFactor(0.8)
+                        .accessibilityLabel(todaySubline(live, data, spoken: true))
                 }
             }
             Tile {
@@ -196,6 +221,17 @@ struct PopoverView: View {
         return data.today.contains { $0.startsAt == w.start } ? start : String(localized: "\(start) tmrw")
     }
 
+    /// Cost so far, plus today's solar export when there is any.
+    private func todaySubline(_ live: LiveMeasurement?, _ data: PriceData, spoken: Bool = false) -> String {
+        guard let live, let cost = live.accumulatedCost else {
+            return model.liveSupported ? String(localized: "no reading yet") : String(localized: "needs a Tibber Pulse")
+        }
+        let costText = PriceFormatter.currencyAmount(cost, currency: live.currency ?? data.currency)
+        guard let produced = live.accumulatedProduction, produced > 0 else { return costText }
+        let kWh = produced.formatted(.number.precision(.fractionLength(1)))
+        return spoken ? String(localized: "\(costText), solar export \(kWh) kWh") : "\(costText) · ☀︎ \(kWh) kWh"
+    }
+
     // MARK: Chart card
 
     private func chartCard(_ data: PriceData) -> some View {
@@ -223,7 +259,8 @@ struct PopoverView: View {
                     }
                 }
                 PriceChart(points: points, data: data, current: day == .tomorrow ? nil : model.current, now: model.now,
-                           showMidnight: day == .both, options: model.popover.chart, window: model.plannedWindow, tierFor: model.tier(for:), selected: $scrubbed)
+                           showMidnight: day == .both, options: model.popover.chart, window: model.plannedWindow, tierFor: model.tier(for:),
+                           palette: model.prices.palette, selected: $scrubbed)
                     .frame(height: model.popover.chart.height.points)
                     .accessibilityLabel("Price chart")
             }

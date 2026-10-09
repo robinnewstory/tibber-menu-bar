@@ -15,9 +15,24 @@ enum Persisted {
 /// Which prices to fetch and what "cheap" means.
 struct PriceOptions: Codable, Equatable {
     static let key = "options.prices"
+    enum Palette: String, Codable, CaseIterable {
+        case standard, colorblind
+        var label: String { switch self { case .standard: return String(localized: "Standard"); case .colorblind: return String(localized: "Colorblind-friendly") } }
+    }
     var homeId: String?
     var resolution: Resolution = .quarterHourly
     var levelSource: LevelSource = .tibber
+    var palette: Palette = .standard
+
+    init() {}
+    // Options added after a release decode as their defaults, so an older settings file never resets everything.
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        homeId = try c.decodeIfPresent(String.self, forKey: .homeId)
+        resolution = try c.decodeIfPresent(Resolution.self, forKey: .resolution) ?? .quarterHourly
+        levelSource = try c.decodeIfPresent(LevelSource.self, forKey: .levelSource) ?? .tibber
+        palette = try c.decodeIfPresent(Palette.self, forKey: .palette) ?? .standard
+    }
 }
 
 /// What the menu bar label shows.
@@ -35,6 +50,17 @@ struct MenuBarOptions: Codable, Equatable {
     var nextPrice = false
     var levelWord = false
     var livePower = false
+
+    init() {}
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        format = try c.decodeIfPresent(LabelStyle.self, forKey: .format) ?? .cents
+        icon = try c.decodeIfPresent(Icon.self, forKey: .icon) ?? .bolt
+        trendArrow = try c.decodeIfPresent(Bool.self, forKey: .trendArrow) ?? true
+        nextPrice = try c.decodeIfPresent(Bool.self, forKey: .nextPrice) ?? false
+        levelWord = try c.decodeIfPresent(Bool.self, forKey: .levelWord) ?? false
+        livePower = try c.decodeIfPresent(Bool.self, forKey: .livePower) ?? false
+    }
 }
 
 /// What the popover shows and how the chart is drawn.
@@ -42,6 +68,13 @@ struct PopoverOptions: Codable, Equatable {
     static let key = "options.popover"
     var livePower = true
     var chart = ChartOptions()
+
+    init() {}
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        livePower = try c.decodeIfPresent(Bool.self, forKey: .livePower) ?? true
+        chart = try c.decodeIfPresent(ChartOptions.self, forKey: .chart) ?? ChartOptions()
+    }
 }
 
 struct ChartOptions: Codable, Equatable {
@@ -70,6 +103,19 @@ struct ChartOptions: Codable, Equatable {
     var fromZero = false
     var height: Height = .normal
     var defaultDay: DefaultDay = .today
+
+    init() {}
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        style = try c.decodeIfPresent(Style.self, forKey: .style) ?? .bars
+        colorMode = try c.decodeIfPresent(ColorMode.self, forKey: .colorMode) ?? .tier
+        showAverage = try c.decodeIfPresent(Bool.self, forKey: .showAverage) ?? true
+        shadeWindow = try c.decodeIfPresent(Bool.self, forKey: .shadeWindow) ?? true
+        dimPast = try c.decodeIfPresent(Bool.self, forKey: .dimPast) ?? true
+        fromZero = try c.decodeIfPresent(Bool.self, forKey: .fromZero) ?? false
+        height = try c.decodeIfPresent(Height.self, forKey: .height) ?? .normal
+        defaultDay = try c.decodeIfPresent(DefaultDay.self, forKey: .defaultDay) ?? .today
+    }
 }
 
 /// Carries settings from the first versions (one UserDefaults key per option) into the grouped structs. Runs once.

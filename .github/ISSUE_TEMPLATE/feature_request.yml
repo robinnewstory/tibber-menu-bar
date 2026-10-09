@@ -1,0 +1,15 @@
+name: Feature request
+description: An idea for the app
+labels: [enhancement]
+body:
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would you like?
+      description: What should the app do, and what would you use it for?
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: How do you handle this today?

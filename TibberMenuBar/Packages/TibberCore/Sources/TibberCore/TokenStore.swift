@@ -2,12 +2,12 @@ import Foundation
 import Security
 
 /// The Tibber access token, kept in the login keychain as a generic password owned by this app.
-public struct TokenStore {
+public struct TokenStore: Sendable {
     public static let service = "nl.newstory.tibber-menu-bar"
     public static let account = "access_token"
 
-    public typealias Reader = () throws -> String?
-    public typealias Writer = (String?) throws -> Void
+    public typealias Reader = @Sendable () throws -> String?
+    public typealias Writer = @Sendable (String?) throws -> Void
     let read: Reader
     let write: Writer
 

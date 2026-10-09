@@ -13,6 +13,7 @@ struct PriceChart: View {
     let options: ChartOptions
     let window: PlannedWindow?
     let tierFor: (PricePoint) -> DisplayTier
+    let palette: PriceOptions.Palette
     @Binding var selected: PricePoint?
     @State private var hovered: PricePoint?
     private let accent = Color.teal
@@ -79,7 +80,7 @@ struct PriceChart: View {
                                 y: .value("Floor", yDomain.lowerBound)
                             )
                             .symbolSize(10)
-                            .foregroundStyle(TierColor.color(tierFor(p)))
+                            .foregroundStyle(TierColor.color(tierFor(p), palette: palette))
                         }
                     }
                 }
@@ -102,7 +103,7 @@ struct PriceChart: View {
                                  : "\(markerCents(marker)) · \(PriceFormatter.time(marker.startsAt, timeZone: timeZone))")
                                 .font(.system(size: 9, weight: .semibold))
                                 .padding(.horizontal, 5).padding(.vertical, 1)
-                                .background(markerIsCurrent ? AnyShapeStyle(TierColor.color(.cheap)) : AnyShapeStyle(.regularMaterial), in: Capsule())
+                                .background(markerIsCurrent ? AnyShapeStyle(TierColor.color(.cheap, palette: palette)) : AnyShapeStyle(.regularMaterial), in: Capsule())
                                 .foregroundStyle(markerIsCurrent ? Color.black.opacity(0.85) : Color.primary)
                         }
                 }
@@ -111,7 +112,7 @@ struct PriceChart: View {
                 AxisMarks(values: .stride(by: .hour, count: points.count > 100 ? 6 : 3)) { value in
                     AxisGridLine().foregroundStyle(.primary.opacity(0.14))
                     AxisValueLabel {
-                        if let d = value.as(Date.self) { Text(PriceFormatter.time(d, timeZone: timeZone)).font(.system(size: 9)) }
+                        if let d = value.as(Date.self) { Text(PriceFormatter.hourLabel(d, timeZone: timeZone)).font(.system(size: 9)) }
                     }
                 }
             }
@@ -178,7 +179,7 @@ struct PriceChart: View {
     }
 
     private func barColor(_ p: PricePoint) -> Color {
-        let base = options.colorMode == .tier ? TierColor.color(tierFor(p)) : accent
+        let base = options.colorMode == .tier ? TierColor.color(tierFor(p), palette: palette) : accent
         if let marker, marker.startsAt == p.startsAt { return base }
         let isPast = options.dimPast && p.startsAt.addingTimeInterval(resolution.slotLength) <= now
         return base.opacity(isPast ? 0.45 : 0.85)

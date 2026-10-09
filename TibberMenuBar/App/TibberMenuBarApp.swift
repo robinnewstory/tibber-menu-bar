@@ -4,6 +4,7 @@ import TibberCore
 struct TibberMenuBarApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @ObservedObject private var model = PriceModel.shared
+    private let updater = Updater.shared   // starts Sparkle's scheduled checks
 
     var body: some Scene {
         MenuBarExtra {

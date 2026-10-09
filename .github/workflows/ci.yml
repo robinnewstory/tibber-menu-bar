@@ -35,3 +35,14 @@ jobs:
 
       - name: Check localizations made it into the bundle
         run: ls "TibberMenuBar/build/Build/Products/Release/Tibber Menu Bar.app/Contents/Resources" | grep lproj
+
+      # Renders the popover with demo data (light, dark, Dutch, French) so layout regressions are visible per run.
+      - name: Render screenshots
+        run: TibberMenuBar/snapshots.sh "TibberMenuBar/build/Build/Products/Release/Tibber Menu Bar.app"
+
+      - name: Upload screenshots
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots
+          path: docs/*.png
+          if-no-files-found: error

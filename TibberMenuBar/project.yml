@@ -10,17 +10,20 @@ configFiles:
   Release: Config/Local.xcconfig
 settings:
   base:
-    SWIFT_VERSION: "5.0"
+    SWIFT_VERSION: "6.0"
     MARKETING_VERSION: "0.1.0"
     CURRENT_PROJECT_VERSION: "1"
     CODE_SIGN_STYLE: Automatic
     ENABLE_USER_SCRIPT_SANDBOXING: YES
-    SWIFT_STRICT_CONCURRENCY: minimal
+    SWIFT_STRICT_CONCURRENCY: complete
     SWIFT_EMIT_LOC_STRINGS: YES
     LOCALIZATION_PREFERS_STRING_CATALOGS: YES
 packages:
   TibberCore:
     path: Packages/TibberCore
+  Sparkle:
+    url: https://github.com/sparkle-project/Sparkle
+    from: 2.10.0
 targets:
   TibberMenuBar:
     type: application
@@ -30,6 +33,7 @@ targets:
         excludes: ["Info.plist", "*.entitlements"]
     dependencies:
       - package: TibberCore
+      - package: Sparkle
     info:
       path: App/Info.plist
       properties:
@@ -41,11 +45,21 @@ targets:
         LSUIElement: true
         LSApplicationCategoryType: public.app-category.utilities
         NSHumanReadableCopyright: ""
+        # Sparkle: feed on the GitHub Pages site, EdDSA public key (private key in the maintainer's Keychain),
+        # installer XPC service because the app is sandboxed.
+        SUFeedURL: https://robinnewstory.github.io/tibber-menu-bar/appcast.xml
+        SUPublicEDKey: MdV1w8EjX4Zc+HP0/CAUMQbW0hbQDz/86S9wnZnYQ/E=
+        SUEnableInstallerLauncherService: true
+        SUScheduledCheckInterval: 86400
     entitlements:
       path: App/TibberMenuBar.entitlements
       properties:
         com.apple.security.app-sandbox: true
         com.apple.security.network.client: true
+        # Sparkle's installer and status services, reachable from inside the sandbox.
+        com.apple.security.temporary-exception.mach-lookup.global-name:
+          - $(PRODUCT_BUNDLE_IDENTIFIER)-spks
+          - $(PRODUCT_BUNDLE_IDENTIFIER)-spki
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: nl.newstory.tibbermenubar

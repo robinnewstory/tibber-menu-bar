@@ -116,7 +116,7 @@ final class PriceModel: ObservableObject {
         }
         var parts = [first]
         if menuBar.levelWord, let tier = currentTier { parts.append(tier.localizedLabel) }
-        if menuBar.livePower, liveEnabled, let live = freshLive { parts.append(LiveMeasurement.formatPower(live.power)) }
+        if menuBar.livePower, liveEnabled, let live = freshLive { parts.append(LiveMeasurement.formatPower(live.netPower)) }
         return parts.joined(separator: " · ")
     }
 
@@ -132,14 +132,7 @@ final class PriceModel: ObservableObject {
 
     /// A small filled circle in the tier's color, for the "level dot" icon.
     var menuDot: NSImage {
-        let color: NSColor
-        switch currentTier {
-        case .veryCheap?: color = .systemGreen
-        case .cheap?: color = .systemTeal
-        case .expensive?: color = .systemOrange
-        case .veryExpensive?: color = .systemRed
-        case .normal?, nil: color = .systemGray
-        }
+        let color = TierColor.nsColor(currentTier, palette: prices.palette)
         let image = NSImage(size: NSSize(width: 10, height: 10), flipped: false) { rect in
             color.setFill()
             NSBezierPath(ovalIn: rect.insetBy(dx: 0.5, dy: 0.5)).fill()

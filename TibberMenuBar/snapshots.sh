@@ -8,7 +8,7 @@ ROOT="$(dirname "$HERE")"
 SRC="${1:-/Applications/Tibber Menu Bar.app}"
 COPY="$ROOT/.tools/Snapshot.app"
 DOCS="$ROOT/docs"
-rm -rf "$COPY" && ditto "$SRC" "$COPY"
+mkdir -p "$(dirname "$COPY")" && rm -rf "$COPY" && ditto "$SRC" "$COPY"
 codesign --force --deep --sign - "$COPY" 2>/dev/null
 BIN="$COPY/Contents/MacOS/Tibber Menu Bar"
 mkdir -p "$DOCS"

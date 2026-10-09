@@ -7,16 +7,26 @@ public struct LiveMeasurement: Codable, Equatable, Sendable {
     public let accumulatedConsumption: Double? // kWh since midnight
     public let accumulatedCost: Double?        // in currency since midnight
     public let currency: String?
-    public let powerProduction: Double?        // W, if producing
+    public let powerProduction: Double?        // W fed into the grid right now (solar)
     public let minPower: Double?
     public let averagePower: Double?
     public let maxPower: Double?
+    public let accumulatedProduction: Double?  // kWh exported since midnight
+    public let accumulatedReward: Double?      // in currency since midnight
+    public let maxPowerProduction: Double?     // W, today's export peak
 
     public init(timestamp: Date, power: Double, accumulatedConsumption: Double? = nil, accumulatedCost: Double? = nil, currency: String? = nil,
-                powerProduction: Double? = nil, minPower: Double? = nil, averagePower: Double? = nil, maxPower: Double? = nil) {
+                powerProduction: Double? = nil, minPower: Double? = nil, averagePower: Double? = nil, maxPower: Double? = nil,
+                accumulatedProduction: Double? = nil, accumulatedReward: Double? = nil, maxPowerProduction: Double? = nil) {
         self.timestamp = timestamp; self.power = power; self.accumulatedConsumption = accumulatedConsumption; self.accumulatedCost = accumulatedCost
         self.currency = currency; self.powerProduction = powerProduction; self.minPower = minPower; self.averagePower = averagePower; self.maxPower = maxPower
+        self.accumulatedProduction = accumulatedProduction; self.accumulatedReward = accumulatedReward; self.maxPowerProduction = maxPowerProduction
     }
+
+    /// Draw from the grid minus export to it: negative while solar exceeds consumption.
+    public var netPower: Double { power - (powerProduction ?? 0) }
+    public var isExporting: Bool { (powerProduction ?? 0) > power }
+    public var hasProduction: Bool { (powerProduction ?? 0) > 0 || (accumulatedProduction ?? 0) > 0 }
 
     public static func formatPower(_ watts: Double, locale: Locale = .current) -> String {
         if abs(watts) >= 1000 {
@@ -37,7 +47,7 @@ public enum LiveProtocol {
     }
 
     public static func subscribe(homeId: String) -> String {
-        let query = "subscription { liveMeasurement(homeId: \"\(homeId)\") { timestamp power accumulatedConsumption accumulatedCost currency powerProduction minPower averagePower maxPower } }"
+        let query = "subscription { liveMeasurement(homeId: \"\(homeId)\") { timestamp power accumulatedConsumption accumulatedCost currency powerProduction minPower averagePower maxPower accumulatedProduction accumulatedReward maxPowerProduction } }"
         return json(["id": subscriptionId, "type": "subscribe", "payload": ["query": query]])
     }
 
@@ -71,7 +81,9 @@ public enum LiveProtocol {
             return .measurement(LiveMeasurement(timestamp: date, power: power, accumulatedConsumption: num("accumulatedConsumption"),
                                                 accumulatedCost: num("accumulatedCost"), currency: m["currency"] as? String,
                                                 powerProduction: num("powerProduction"), minPower: num("minPower"),
-                                                averagePower: num("averagePower"), maxPower: num("maxPower")))
+                                                averagePower: num("averagePower"), maxPower: num("maxPower"),
+                                                accumulatedProduction: num("accumulatedProduction"), accumulatedReward: num("accumulatedReward"),
+                                                maxPowerProduction: num("maxPowerProduction")))
         default: return .other(type)
         }
     }

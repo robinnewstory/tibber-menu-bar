@@ -117,7 +117,12 @@ final class MathAndPolicyTests: XCTestCase {
         XCTAssertEqual(PriceFormatter.menuBar(0.2834, currency: "EUR", style: .currency3, locale: en), "€0.283")
         let tz = TimeZone(identifier: "Europe/Amsterdam")!
         let p = PricePoint(startsAt: DateParsing.parse("2026-10-08T14:15:00+02:00")!, total: 0.2, currency: "EUR")
-        XCTAssertEqual(PriceFormatter.slotRange(p, slotLength: 900, timeZone: tz, locale: en), "14:15–14:30")
+        XCTAssertEqual(PriceFormatter.slotRange(p, slotLength: 900, timeZone: tz, locale: Locale(identifier: "nl_NL")), "14:15–14:30")
+        XCTAssertEqual(PriceFormatter.slotRange(p, slotLength: 900, timeZone: tz, locale: en).replacingOccurrences(of: "\u{202F}", with: " "), "2:15 PM–2:30 PM")
+        XCTAssertEqual(PriceFormatter.hourLabel(p.startsAt, timeZone: tz, locale: Locale(identifier: "de_DE")), "14:15")
+        XCTAssertEqual(PriceFormatter.hourLabel(p.startsAt, timeZone: tz, locale: en).replacingOccurrences(of: "\u{202F}", with: " "), "2 PM")
+        XCTAssertTrue(PriceFormatter.uses12HourClock(en))
+        XCTAssertFalse(PriceFormatter.uses12HourClock(Locale(identifier: "sv_SE")))
     }
 
     func testTokenStoreAndCacheRoundTrip() throws {
@@ -247,6 +252,14 @@ final class PlannerAndRulesTests: XCTestCase {
         guard case .measurement(let m) = LiveProtocol.parse(next) else { return XCTFail("expected measurement") }
         XCTAssertEqual(m.power, 1834)
         XCTAssertEqual(m.accumulatedConsumption, 7.41)
+        XCTAssertEqual(m.netPower, 1834)
+        XCTAssertFalse(m.isExporting)
+        let solar = #"{"id":"1","type":"next","payload":{"data":{"liveMeasurement":{"timestamp":"2026-10-09T13:00:00.000+02:00","power":0,"powerProduction":2450,"accumulatedProduction":6.2,"accumulatedReward":0.71,"maxPowerProduction":3900,"currency":"EUR"}}}}"#
+        guard case .measurement(let s) = LiveProtocol.parse(solar) else { return XCTFail("expected measurement") }
+        XCTAssertEqual(s.netPower, -2450)
+        XCTAssertTrue(s.isExporting)
+        XCTAssertEqual(s.accumulatedProduction, 6.2)
+        XCTAssertEqual(s.maxPowerProduction, 3900)
         XCTAssertEqual(m.accumulatedCost, 1.92)
         XCTAssertEqual(m.timestamp, DateParsing.parse("2026-10-09T09:12:34+02:00"))
         XCTAssertEqual(LiveMeasurement.formatPower(1834, locale: Locale(identifier: "en_US")), "1.8 kW")

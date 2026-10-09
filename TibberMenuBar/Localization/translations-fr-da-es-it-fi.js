@@ -247,4 +247,16 @@ module.exports = {
   "waiting for the first reading…": { fr: "en attente de la première mesure…", da: "venter på første måling…", es: "esperando la primera lectura…",
     it: "in attesa della prima lettura…", fi: "odotetaan ensimmäistä lukemaa…" },
   "· next %1$@ %2$@": { fr: "· ensuite %1$@ %2$@", da: "· næste %1$@ %2$@", es: "· siguiente %1$@ %2$@", it: "· poi %1$@ %2$@", fi: "· seuraava %1$@ %2$@" },
+  // 0.2.0: updates, price breakdown, solar, palettes
+  "%@, solar export %@ kWh": { fr: "%1$@, export solaire %2$@ kWh", da: "%1$@, soleksport %2$@ kWh", es: "%1$@, exportación solar %2$@ kWh", it: "%1$@, esportazione solare %2$@ kWh", fi: "%1$@, aurinkovienti %2$@ kWh" },
+  "Check for Updates…": { fr: "Rechercher des mises à jour…", da: "Søg efter opdateringer…", es: "Buscar actualizaciones…", it: "Controlla aggiornamenti…", fi: "Etsi päivityksiä…" },
+  "Check for updates automatically": { fr: "Rechercher automatiquement les mises à jour", da: "Søg automatisk efter opdateringer", es: "Buscar actualizaciones automáticamente", it: "Controlla automaticamente gli aggiornamenti", fi: "Etsi päivityksiä automaattisesti" },
+  "Colorblind-friendly": { fr: "Adapté au daltonisme", da: "Farveblindvenlig", es: "Apto para daltónicos", it: "Adatto ai daltonici", fi: "Värisokeusystävällinen" },
+  "Energy %@ plus taxes and fees %@, per kWh": { fr: "Énergie %1$@ plus taxes et frais %2$@, par kWh", da: "Energi %1$@ plus afgifter og gebyrer %2$@, pr. kWh", es: "Energía %1$@ más impuestos y tasas %2$@, por kWh", it: "Energia %1$@ più tasse e oneri %2$@, per kWh", fi: "Energia %1$@ plus verot ja maksut %2$@, per kWh" },
+  "Level colors": { fr: "Couleurs des niveaux", da: "Niveaufarver", es: "Colores de nivel", it: "Colori dei livelli", fi: "Tasojen värit" },
+  "Standard": { fr: "Standard", da: "Standard", es: "Estándar", it: "Standard", fi: "Vakio" },
+  "Total price per kWh, taxes and fees included": { fr: "Prix total par kWh, taxes et frais compris", da: "Samlet pris pr. kWh, inklusive afgifter og gebyrer", es: "Precio total por kWh, impuestos y tasas incluidos", it: "Prezzo totale per kWh, tasse e oneri inclusi", fi: "Kokonaishinta per kWh, verot ja maksut mukaan lukien" },
+  "energy %@ · tax %@": { fr: "énergie %1$@ · taxes %2$@", da: "energi %1$@ · afgift %2$@", es: "energía %1$@ · impuestos %2$@", it: "energia %1$@ · tasse %2$@", fi: "energia %1$@ · vero %2$@" },
+  "exporting to the grid": { fr: "injection dans le réseau", da: "eksporterer til nettet", es: "exportando a la red", it: "immissione in rete", fi: "syöttää verkkoon" },
+  "exporting · %@ kWh today": { fr: "injection · %@ kWh aujourd'hui", da: "eksport · %@ kWh i dag", es: "exportando · %@ kWh hoy", it: "immissione · %@ kWh oggi", fi: "vienti · %@ kWh tänään" },
 };
