@@ -76,3 +76,15 @@ enum Diagnostics {
         printStatus()
     }
 }
+
+extension Diagnostics {
+    /// Prints today's and tomorrow's prices as JSON (cents, one decimal) with Tibber's level letters, for mockups and debugging.
+    static func dumpToday() {
+        guard let data = PriceCache().load() else { print("{}"); return }
+        func enc(_ ps: [PricePoint]) -> String {
+            "[" + ps.map { String(format: "%.1f", $0.total * 100) }.joined(separator: ",") + "]"
+        }
+        func lv(_ ps: [PricePoint]) -> String { ps.map { String(($0.level?.rawValue.first).map { String($0) } ?? "-") }.joined() }
+        print("{\"resolution\":\"\(data.resolution.rawValue)\",\"today\":\(enc(data.today)),\"todayLevels\":\"\(lv(data.today))\",\"tomorrow\":\(enc(data.tomorrow)),\"tomorrowLevels\":\"\(lv(data.tomorrow))\"}")
+    }
+}
