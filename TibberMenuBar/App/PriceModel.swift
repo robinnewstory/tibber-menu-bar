@@ -74,6 +74,8 @@ final class PriceModel: ObservableObject {
     private let tokenStore = TokenStore.keychain
     private var timer: Timer?
     private var started = false
+    private var homesAttemptAt: Date?
+    private var refreshQueued = false
 
     // MARK: Derived values
 
@@ -167,15 +169,19 @@ final class PriceModel: ObservableObject {
         }
         if notifications.anyEnabled { Task { await NotificationManager.shared.requestAuthorization() } }
         Task {
-            await loadHomes()
+            await loadHomes()   // also starts the live stream once the websocket URL is known
             await refresh(force: false)
-            restartLive()
         }
     }
 
     private func tick() {
         now = Date()
         updateCurrent()
+        // Launching at login often happens before the network is up; keep asking for the homes (and the
+        // websocket URL) until they are known, at most every five minutes.
+        if hasToken, homes.isEmpty, homesAttemptAt.map({ now.timeIntervalSince($0) >= 5 * 60 }) ?? true {
+            Task { await loadHomes() }
+        }
         let reason = RefreshPolicy.reason(data: data, lastAttempt: lastAttempt, now: now)
         if reason != .none, Backoff.mayRetry(failures: consecutiveFailures, lastAttempt: lastAttempt, now: now) {
             Task { await refresh(force: false) }
@@ -234,9 +240,9 @@ final class PriceModel: ObservableObject {
         hasToken = true
         lastError = nil
         consecutiveFailures = 0
+        stopLive()   // a replaced token must not keep the old stream; loadHomes starts a fresh one
         await loadHomes()
         await refresh(force: true)
-        restartLive()
         return lastError
     }
 
@@ -244,16 +250,24 @@ final class PriceModel: ObservableObject {
         try? tokenStore.save(nil)
         hasToken = false
         homes = []
+        websocketURL = nil
         data = nil
         current = nil
         lastError = nil
+        refreshQueued = false
         stopLive()
+        // Disconnecting leaves nothing of the account behind: home name and city, prices, consumption and cost.
+        cache.clear()
+        LiveSnapshot.clear()
+        notificationState = NotificationState()
     }
 
     func loadHomes() async {
         guard let token = try? tokenStore.load(), !token.isEmpty else { return }
+        homesAttemptAt = Date()
         do {
             let account = try await TibberClient(token: token).fetchAccount()
+            guard (try? tokenStore.load()) == token else { return }   // disconnected or replaced meanwhile
             homes = account.homes
             websocketURL = account.websocketURL
             if prices.homeId == nil || !homes.contains(where: { $0.id == prices.homeId }) {
@@ -261,6 +275,7 @@ final class PriceModel: ObservableObject {
                 prices.homeId = homes.first(where: \.hasSubscription)?.id ?? homes.first?.id
                 suppressSideEffects = false
             }
+            if liveEnabled, liveClient == nil { restartLive() }
         } catch {
             lastError = error.localizedDescription
         }
@@ -269,15 +284,19 @@ final class PriceModel: ObservableObject {
     // MARK: Refresh
 
     func refresh(force: Bool) async {
-        guard !isLoading else { return }
+        guard !isLoading else {
+            // A forced refresh (other home, other resolution, new token) must not be lost behind the one in flight.
+            if force { refreshQueued = true }
+            return
+        }
         guard let token = try? tokenStore.load(), !token.isEmpty else { hasToken = false; return }
         hasToken = true
         if !force && RefreshPolicy.reason(data: data, lastAttempt: lastAttempt, now: Date()) == .none { return }
         isLoading = true
         lastAttempt = Date()
-        defer { isLoading = false }
         do {
             let fresh = try await TibberClient(token: token).fetchPrices(homeId: prices.homeId, resolution: prices.resolution)
+            guard (try? tokenStore.load()) == token else { isLoading = false; return }   // disconnected or replaced meanwhile
             data = fresh
             cache.save(fresh)
             lastError = nil
@@ -289,8 +308,13 @@ final class PriceModel: ObservableObject {
             isOffline = Self.isOfflineError(error)
             lastError = isOffline ? String(localized: "Offline, showing cached prices") : ErrorText.describe(error)
         }
+        isLoading = false
         updateCurrent()
         evaluateNotifications()
+        if refreshQueued {
+            refreshQueued = false
+            await refresh(force: true)
+        }
     }
 
     static func isOfflineError(_ error: Error) -> Bool {
@@ -366,6 +390,7 @@ enum LiveSnapshot {
         let e = JSONEncoder(); e.dateEncodingStrategy = .iso8601
         if let d = try? e.encode(LiveSnapshotRecord(measurement: m, messages: messages, since: since, writtenAt: Date())) { try? d.write(to: url, options: .atomic) }
     }
+    static func clear() { try? FileManager.default.removeItem(at: url) }
     static func read() -> LiveSnapshotRecord? {
         guard let d = try? Data(contentsOf: url) else { return nil }
         let dec = JSONDecoder(); dec.dateDecodingStrategy = .iso8601

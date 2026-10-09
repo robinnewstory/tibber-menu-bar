@@ -76,6 +76,8 @@ public struct PriceCache {
         return try? d.decode(PriceData.self, from: data)
     }
 
+    public func clear() { try? FileManager.default.removeItem(at: url) }
+
     public func save(_ prices: PriceData) {
         let e = JSONEncoder(); e.dateEncodingStrategy = .iso8601
         if let data = try? e.encode(prices) { try? data.write(to: url, options: .atomic) }

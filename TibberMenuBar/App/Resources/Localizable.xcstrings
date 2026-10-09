@@ -8485,60 +8485,60 @@
         }
       }
     },
-    "Your token is stored in the macOS Keychain and only ever sent to api.tibber.com.": {
+    "Your token is stored in the macOS Keychain and only ever sent to Tibber.": {
       "localizations": {
         "da": {
           "stringUnit": {
             "state": "translated",
-            "value": "Dit token gemmes i macOS-nøgleringen og sendes kun til api.tibber.com."
+            "value": "Dit token gemmes i macOS-nøgleringen og sendes kun til Tibber."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Dein Token liegt im macOS-Schlüsselbund und wird ausschließlich an api.tibber.com gesendet."
+            "value": "Dein Token liegt im macOS-Schlüsselbund und wird ausschließlich an Tibber gesendet."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tu token se guarda en el llavero de macOS y solo se envía a api.tibber.com."
+            "value": "Tu token se guarda en el llavero de macOS y solo se envía a Tibber."
           }
         },
         "fi": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tunnuksesi tallennetaan macOS-avainnippuun ja lähetetään vain osoitteeseen api.tibber.com."
+            "value": "Tunnuksesi tallennetaan macOS-avainnippuun ja lähetetään vain Tibberille."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Votre jeton est stocké dans le trousseau macOS et n'est envoyé qu'à api.tibber.com."
+            "value": "Votre jeton est stocké dans le trousseau macOS et n'est envoyé qu'à Tibber."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Il tuo token è salvato nel portachiavi di macOS e viene inviato solo a api.tibber.com."
+            "value": "Il tuo token è salvato nel portachiavi di macOS e viene inviato solo a Tibber."
           }
         },
         "nb": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tokenet ditt lagres i macOS-nøkkelringen og sendes kun til api.tibber.com."
+            "value": "Tokenet ditt lagres i macOS-nøkkelringen og sendes kun til Tibber."
           }
         },
         "nl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Je token staat in de macOS-sleutelhanger en wordt alleen naar api.tibber.com gestuurd."
+            "value": "Je token staat in de macOS-sleutelhanger en wordt alleen naar Tibber gestuurd."
           }
         },
         "sv": {
           "stringUnit": {
             "state": "translated",
-            "value": "Din token lagras i macOS-nyckelringen och skickas bara till api.tibber.com."
+            "value": "Din token lagras i macOS-nyckelringen och skickas bara till Tibber."
           }
         }
       }

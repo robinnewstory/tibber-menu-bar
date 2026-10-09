@@ -219,12 +219,12 @@ module.exports = {
   "Window reminder off": { fr: "Rappel de créneau désactivé", da: "Vinduespåmindelse fra", es: "Recordatorio de franja desactivado", it: "Promemoria fascia disattivato", fi: "Jaksomuistutus pois" },
   "Window reminder on": { fr: "Rappel de créneau activé", da: "Vinduespåmindelse til", es: "Recordatorio de franja activado", it: "Promemoria fascia attivato", fi: "Jaksomuistutus päällä" },
   "Window start": { fr: "Début du créneau", da: "Vinduets start", es: "Inicio de la franja", it: "Inizio della fascia", fi: "Jakson alku" },
-  "Your token is stored in the macOS Keychain and only ever sent to api.tibber.com.": {
-    fr: "Votre jeton est stocké dans le trousseau macOS et n'est envoyé qu'à api.tibber.com.",
-    da: "Dit token gemmes i macOS-nøgleringen og sendes kun til api.tibber.com.",
-    es: "Tu token se guarda en el llavero de macOS y solo se envía a api.tibber.com.",
-    it: "Il tuo token è salvato nel portachiavi di macOS e viene inviato solo a api.tibber.com.",
-    fi: "Tunnuksesi tallennetaan macOS-avainnippuun ja lähetetään vain osoitteeseen api.tibber.com." },
+  "Your token is stored in the macOS Keychain and only ever sent to Tibber.": {
+    fr: "Votre jeton est stocké dans le trousseau macOS et n'est envoyé qu'à Tibber.",
+    da: "Dit token gemmes i macOS-nøgleringen og sendes kun til Tibber.",
+    es: "Tu token se guarda en el llavero de macOS y solo se envía a Tibber.",
+    it: "Il tuo token è salvato nel portachiavi di macOS e viene inviato solo a Tibber.",
+    fi: "Tunnuksesi tallennetaan macOS-avainnippuun ja lähetetään vain Tibberille." },
   "avg %@": { fr: "moy. %@", da: "gns. %@", es: "media %@", it: "media %@", fi: "ka. %@" },
   "connecting to Pulse…": { fr: "connexion à Pulse…", da: "forbinder til Pulse…", es: "conectando con Pulse…", it: "collegamento a Pulse…", fi: "yhdistetään Pulseen…" },
   "just now": { fr: "à l'instant", da: "lige nu", es: "ahora mismo", it: "proprio ora", fi: "juuri nyt" },

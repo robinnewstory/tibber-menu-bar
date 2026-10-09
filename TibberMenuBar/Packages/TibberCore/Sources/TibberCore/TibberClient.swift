@@ -26,11 +26,20 @@ public final class TibberClient {
     { viewer { websocketSubscriptionUrl homes { id appNickname timeZone address { city } features { realTimeConsumptionEnabled } currentSubscription { status } } } }
     """
 
-    static func pricesQuery(homeId: String?, resolution: Resolution) -> String {
+    /// The home id travels as a GraphQL variable, never spliced into the query text.
+    static func pricesQuery(homeId: String?, resolution: Resolution) -> (query: String, variables: [String: String]) {
         let fields = "total energy tax startsAt currency level"
         let selection = "currentSubscription { status priceInfo(resolution: \(resolution.rawValue)) { current { \(fields) } today { \(fields) } tomorrow { \(fields) } } }"
-        let home = homeId.map { "home(id: \"\($0)\")" } ?? "homes"
-        return "{ viewer { \(home) { id appNickname timeZone address { city } features { realTimeConsumptionEnabled } \(selection) } } }"
+        let body = "id appNickname timeZone address { city } features { realTimeConsumptionEnabled } \(selection)"
+        guard let homeId else { return ("{ viewer { homes { \(body) } } }", [:]) }
+        return ("query($homeId: ID!) { viewer { home(id: $homeId) { \(body) } } }", ["homeId": homeId])
+    }
+
+    /// Only a secure websocket on Tibber's own domain may receive the token.
+    static func trustedWebsocketURL(_ raw: String?) -> URL? {
+        guard let raw, let url = URL(string: raw), url.scheme?.lowercased() == "wss",
+              let host = url.host?.lowercased(), host == "tibber.com" || host.hasSuffix(".tibber.com") else { return nil }
+        return url
     }
 
     public struct Account: Equatable, Sendable {
@@ -42,15 +51,15 @@ public final class TibberClient {
 
     public func fetchAccount() async throws -> Account {
         let data: ViewerHomes = try await run(Self.homesQuery)
-        return Account(homes: data.viewer.homes.map(Self.homeInfo), websocketURL: data.viewer.websocketSubscriptionUrl.flatMap(URL.init(string:)))
+        return Account(homes: data.viewer.homes.map(Self.homeInfo), websocketURL: Self.trustedWebsocketURL(data.viewer.websocketSubscriptionUrl))
     }
 
     /// Prices for `homeId`, or for the first home with a subscription when nil.
     public func fetchPrices(homeId: String?, resolution: Resolution, now: Date = Date()) async throws -> PriceData {
-        let query = Self.pricesQuery(homeId: homeId, resolution: resolution)
+        let (query, variables) = Self.pricesQuery(homeId: homeId, resolution: resolution)
         let homes: [HomeDTO]
         if homeId != nil {
-            let data: ViewerHome = try await run(query)
+            let data: ViewerHome = try await run(query, variables: variables)
             guard let home = data.viewer.home else { throw TibberError.noHomes }
             homes = [home]
         } else {
@@ -65,14 +74,16 @@ public final class TibberClient {
 
     // MARK: Transport
 
-    private func run<T: Decodable>(_ query: String) async throws -> T {
+    private func run<T: Decodable>(_ query: String, variables: [String: String] = [:]) async throws -> T {
         var request = URLRequest(url: endpoint)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         request.setValue(Self.userAgent, forHTTPHeaderField: "User-Agent")
-        request.httpBody = try JSONSerialization.data(withJSONObject: ["query": query])
+        var body: [String: Any] = ["query": query]
+        if !variables.isEmpty { body["variables"] = variables }
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
         request.timeoutInterval = 20
         let (data, response) = try await session.data(for: request)
         let status = (response as? HTTPURLResponse)?.statusCode ?? 0

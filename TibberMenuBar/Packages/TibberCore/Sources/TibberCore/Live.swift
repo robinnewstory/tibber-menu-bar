@@ -47,8 +47,9 @@ public enum LiveProtocol {
     }
 
     public static func subscribe(homeId: String) -> String {
-        let query = "subscription { liveMeasurement(homeId: \"\(homeId)\") { timestamp power accumulatedConsumption accumulatedCost currency powerProduction minPower averagePower maxPower accumulatedProduction accumulatedReward maxPowerProduction } }"
-        return json(["id": subscriptionId, "type": "subscribe", "payload": ["query": query]])
+        // The home id travels as a GraphQL variable, never spliced into the query text.
+        let query = "subscription($homeId: ID!) { liveMeasurement(homeId: $homeId) { timestamp power accumulatedConsumption accumulatedCost currency powerProduction minPower averagePower maxPower accumulatedProduction accumulatedReward maxPowerProduction } }"
+        return json(["id": subscriptionId, "type": "subscribe", "payload": ["query": query, "variables": ["homeId": homeId]]])
     }
 
     public static let pong = json(["type": "pong"])
@@ -94,8 +95,13 @@ public enum LiveProtocol {
 }
 
 /// Keeps a websocket subscription to Tibber's live measurements open, reconnecting with backoff.
+/// Every failure is attributed to the socket it came from: a broken socket usually reports through both its
+/// send and its receive callback, and a late error from an already replaced socket must not tear down the new one.
 public final class LiveClient {
     public enum Status: Equatable { case idle, connecting, connected, reconnecting(in: Int), failed(String) }
+
+    /// A Pulse reports every few seconds; a connection that stays silent this long is treated as dead.
+    public static let silenceTimeout: TimeInterval = 60
 
     private let token: String
     private let homeId: String
@@ -104,6 +110,8 @@ public final class LiveClient {
     private var task: URLSessionWebSocketTask?
     private var stopped = false
     private var failures = 0
+    private var pendingReconnect: DispatchWorkItem?
+    private var watchdog: DispatchWorkItem?
     private let queue = DispatchQueue(label: "nl.newstory.tibber-menu-bar.live")
 
     public var onMeasurement: ((LiveMeasurement) -> Void)?
@@ -123,6 +131,8 @@ public final class LiveClient {
     public func stop() {
         queue.async { [self] in
             stopped = true
+            pendingReconnect?.cancel(); pendingReconnect = nil
+            watchdog?.cancel(); watchdog = nil
             task?.cancel(with: .normalClosure, reason: nil)
             task = nil
             onStatus?(.idle)
@@ -131,6 +141,9 @@ public final class LiveClient {
 
     private func connect() {
         guard !stopped else { return }
+        pendingReconnect?.cancel(); pendingReconnect = nil
+        // Never leave a previous socket open next to the new one.
+        task?.cancel(with: .goingAway, reason: nil)
         onStatus?(.connecting)
         var request = URLRequest(url: url)
         request.setValue(LiveProtocol.subprotocol, forHTTPHeaderField: "Sec-WebSocket-Protocol")
@@ -138,13 +151,14 @@ public final class LiveClient {
         let t = session.webSocketTask(with: request)
         task = t
         t.resume()
-        send(LiveProtocol.connectionInit(token: token))
+        send(LiveProtocol.connectionInit(token: token), on: t)
+        armWatchdog(for: t)   // a server that never acks is caught too
         receive(on: t)
     }
 
-    private func send(_ text: String) {
-        task?.send(.string(text)) { [weak self] error in
-            if let error { self?.handleFailure(error.localizedDescription) }
+    private func send(_ text: String, on t: URLSessionWebSocketTask) {
+        t.send(.string(text)) { [weak self] error in
+            if let error { self?.handleFailure(error.localizedDescription, on: t) }
         }
     }
 
@@ -155,7 +169,7 @@ public final class LiveClient {
                 guard self.task === t, !self.stopped else { return }
                 switch result {
                 case .failure(let error):
-                    self.handleFailure(error.localizedDescription)
+                    self.handleFailure(error.localizedDescription, on: t)
                 case .success(let message):
                     let text: String
                     switch message {
@@ -163,41 +177,54 @@ public final class LiveClient {
                     case .data(let d): text = String(decoding: d, as: UTF8.self)
                     @unknown default: text = ""
                     }
-                    self.handle(LiveProtocol.parse(text))
+                    self.armWatchdog(for: t)
+                    self.handle(LiveProtocol.parse(text), on: t)
                     self.receive(on: t)
                 }
             }
         }
     }
 
-    private func handle(_ incoming: LiveProtocol.Incoming) {
+    private func handle(_ incoming: LiveProtocol.Incoming, on t: URLSessionWebSocketTask) {
         switch incoming {
         case .ack:
             failures = 0
             onStatus?(.connected)
-            send(LiveProtocol.subscribe(homeId: homeId))
+            send(LiveProtocol.subscribe(homeId: homeId), on: t)
         case .ping:
-            send(LiveProtocol.pong)
+            send(LiveProtocol.pong, on: t)
         case .measurement(let m):
             onMeasurement?(m)
         case .error(let message):
-            handleFailure(message)
+            handleFailure(message, on: t)
         case .complete:
-            handleFailure("subscription completed by server")
+            handleFailure("subscription completed by server", on: t)
         case .other:
             break
         }
     }
 
-    private func handleFailure(_ message: String) {
+    /// Restarts the silence timer; treats the connection as failed when nothing arrives within `silenceTimeout`.
+    private func armWatchdog(for t: URLSessionWebSocketTask) {
+        watchdog?.cancel()
+        let item = DispatchWorkItem { [weak self] in self?.handleFailure("no data for \(Int(Self.silenceTimeout)) s", on: t) }
+        watchdog = item
+        queue.asyncAfter(deadline: .now() + Self.silenceTimeout, execute: item)
+    }
+
+    /// Only the first failure of the current socket counts; one reconnect per failure, after backoff.
+    private func handleFailure(_ message: String, on t: URLSessionWebSocketTask) {
         queue.async { [self] in
-            guard !stopped else { return }
-            task?.cancel(with: .goingAway, reason: nil)
+            guard !stopped, task === t else { return }
+            watchdog?.cancel(); watchdog = nil
+            t.cancel(with: .goingAway, reason: nil)
             task = nil
             failures += 1
             let delay = min(60, 5 * failures)
             onStatus?(failures >= 5 ? .failed(message) : .reconnecting(in: delay))
-            queue.asyncAfter(deadline: .now() + .seconds(delay)) { [weak self] in self?.connect() }
+            let item = DispatchWorkItem { [weak self] in self?.connect() }
+            pendingReconnect = item
+            queue.asyncAfter(deadline: .now() + .seconds(delay), execute: item)
         }
     }
 }

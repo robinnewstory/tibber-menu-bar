@@ -39,7 +39,7 @@ Requires macOS 14 Sonoma or later.
 1. Create a personal access token at <https://developer.tibber.com/settings/access-token> and copy it with the copy button.
 2. Click the bolt in the menu bar → **Open Settings…**, paste the token, click **Connect**. Pick a home if you have several.
 
-The token is stored in the macOS Keychain and only ever sent to `api.tibber.com`. The app makes no other network connections.
+The token is stored in the macOS Keychain and only ever sent to Tibber (`api.tibber.com` for prices, `websocket-api.tibber.com` for the live stream). The app makes no other network connections.
 
 ## Features
 

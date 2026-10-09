@@ -193,11 +193,11 @@ module.exports = {
   "Window reminder off": { nl: "Vensterherinnering uit", de: "Fenster-Erinnerung aus", nb: "Vinduspåminnelse av", sv: "Fönsterpåminnelse av" },
   "Window reminder on": { nl: "Vensterherinnering aan", de: "Fenster-Erinnerung an", nb: "Vinduspåminnelse på", sv: "Fönsterpåminnelse på" },
   "Window start": { nl: "Begin venster", de: "Fensterbeginn", nb: "Vinduets start", sv: "Fönstrets start" },
-  "Your token is stored in the macOS Keychain and only ever sent to api.tibber.com.": {
-    nl: "Je token staat in de macOS-sleutelhanger en wordt alleen naar api.tibber.com gestuurd.",
-    de: "Dein Token liegt im macOS-Schlüsselbund und wird ausschließlich an api.tibber.com gesendet.",
-    nb: "Tokenet ditt lagres i macOS-nøkkelringen og sendes kun til api.tibber.com.",
-    sv: "Din token lagras i macOS-nyckelringen och skickas bara till api.tibber.com." },
+  "Your token is stored in the macOS Keychain and only ever sent to Tibber.": {
+    nl: "Je token staat in de macOS-sleutelhanger en wordt alleen naar Tibber gestuurd.",
+    de: "Dein Token liegt im macOS-Schlüsselbund und wird ausschließlich an Tibber gesendet.",
+    nb: "Tokenet ditt lagres i macOS-nøkkelringen og sendes kun til Tibber.",
+    sv: "Din token lagras i macOS-nyckelringen och skickas bara till Tibber." },
   "avg %@": { nl: "gem. %@", de: "Ø %@", nb: "snitt %@", sv: "snitt %@" },
   "connecting to Pulse…": { nl: "verbinden met Pulse…", de: "verbinde mit Pulse…", nb: "kobler til Pulse…", sv: "ansluter till Pulse…" },
   "just now": { nl: "zojuist", de: "gerade eben", nb: "akkurat nå", sv: "just nu" },

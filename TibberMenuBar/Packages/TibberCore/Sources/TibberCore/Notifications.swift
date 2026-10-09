@@ -19,6 +19,9 @@ public struct NotificationPrefs: Codable, Equatable {
 public struct NotificationState: Codable, Equatable {
     public var tomorrowNotifiedFor: String?       // "yyyy-MM-dd" of the day announced
     public var windowNotifiedStart: Date?
+    /// End of the announced window. While it runs, the planner keeps finding a "new" window that starts at the
+    /// next slot (the announced start has passed), so anything starting before this end is the same window.
+    public var windowNotifiedEnd: Date?
     public var thresholdZone: Int?                // -1 below, 0 between, 1 above; nil = not yet evaluated
 
     public init() {}
@@ -49,8 +52,10 @@ public enum NotificationRules {
 
         if prefs.cheapWindowStart, let window = Planner.cheapestWindow(in: data, hours: prefs.plannerHours, from: now) {
             let lead = window.start.timeIntervalSince(now)
-            if lead <= windowLeadTime, lead > -data.resolution.slotLength, state.windowNotifiedStart != window.start {
+            let alreadyAnnounced = state.windowNotifiedEnd.map { window.start < $0 } ?? (state.windowNotifiedStart == window.start)
+            if lead <= windowLeadTime, lead > -data.resolution.slotLength, !alreadyAnnounced {
                 state.windowNotifiedStart = window.start
+                state.windowNotifiedEnd = window.end
                 out.append(.cheapWindowStarts(window: window, currency: currency))
             }
         }

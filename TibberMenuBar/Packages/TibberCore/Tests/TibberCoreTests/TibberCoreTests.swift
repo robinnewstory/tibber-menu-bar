@@ -33,10 +33,19 @@ final class ParsingTests: XCTestCase {
     }
 
     func testQueryShape() {
-        let q = TibberClient.pricesQuery(homeId: "abc", resolution: .quarterHourly)
-        XCTAssertTrue(q.contains("home(id: \"abc\")"))
-        XCTAssertTrue(q.contains("priceInfo(resolution: QUARTER_HOURLY)"))
-        XCTAssertTrue(TibberClient.pricesQuery(homeId: nil, resolution: .hourly).contains("homes {"))
+        let q = TibberClient.pricesQuery(homeId: "abc\") { x }", resolution: .quarterHourly)
+        XCTAssertTrue(q.query.contains("home(id: $homeId)"))
+        XCTAssertFalse(q.query.contains("abc"), "the id never ends up in the query text")
+        XCTAssertEqual(q.variables, ["homeId": "abc\") { x }"])
+        XCTAssertTrue(q.query.contains("priceInfo(resolution: QUARTER_HOURLY)"))
+        XCTAssertTrue(TibberClient.pricesQuery(homeId: nil, resolution: .hourly).query.contains("homes {"))
+    }
+
+    func testWebsocketURLMustBeSecureAndTibber() {
+        XCTAssertNotNil(TibberClient.trustedWebsocketURL("wss://websocket-api.tibber.com/v1-beta/gql/subscriptions"))
+        XCTAssertNil(TibberClient.trustedWebsocketURL("ws://websocket-api.tibber.com/v1-beta/gql/subscriptions"))
+        XCTAssertNil(TibberClient.trustedWebsocketURL("wss://tibber.com.example.net/gql"))
+        XCTAssertNil(TibberClient.trustedWebsocketURL(nil))
     }
 
     func testInvalidTokenDetection() async throws {
@@ -265,8 +274,34 @@ final class PlannerAndRulesTests: XCTestCase {
         XCTAssertEqual(m.timestamp, DateParsing.parse("2026-10-09T09:12:34+02:00"))
         XCTAssertEqual(LiveMeasurement.formatPower(1834, locale: Locale(identifier: "en_US")), "1.8 kW")
         XCTAssertEqual(LiveMeasurement.formatPower(640.4, locale: Locale(identifier: "en_US")), "640 W")
-        XCTAssertTrue(LiveProtocol.subscribe(homeId: "abc").contains("liveMeasurement(homeId: \\\"abc\\\")"))
+        let subscribe = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(LiveProtocol.subscribe(homeId: "abc\"").utf8)) as? [String: Any])
+        let payload = try XCTUnwrap(subscribe["payload"] as? [String: Any])
+        XCTAssertTrue(try XCTUnwrap(payload["query"] as? String).contains("liveMeasurement(homeId: $homeId)"))
+        XCTAssertEqual(payload["variables"] as? [String: String], ["homeId": "abc\""])
         XCTAssertTrue(LiveProtocol.connectionInit(token: "t").contains("connection_init"))
+    }
+}
+
+final class CheapWindowRepeatTests: XCTestCase {
+    /// A flat night valley 02:00–05:00 and a dearer midday dip (quarter-hourly): the 2 h window is announced once,
+    /// not again every quarter while it runs.
+    func testCheapWindowIsAnnouncedOncePerValley() throws {
+        let start = try XCTUnwrap(DateParsing.parse("2026-10-08T00:00:00+02:00"))
+        let points = (0..<96).map { i in
+            PricePoint(startsAt: start.addingTimeInterval(Double(i) * 900), total: (8..<20).contains(i) ? 0.10 : ((48..<56).contains(i) ? 0.15 : 0.30), currency: "EUR")
+        }
+        let home = HomeInfo(id: "h", nickname: nil, timeZone: "Europe/Amsterdam", city: nil, hasSubscription: true)
+        let data = PriceData(home: home, resolution: .quarterHourly, today: points, tomorrow: [], fetchedAt: start)
+        let prefs = NotificationPrefs(cheapWindowStart: true, plannerHours: 2)
+        var state = NotificationState()
+        var announced = 0
+        var now = start.addingTimeInterval(3600)
+        while now < start.addingTimeInterval(6 * 3600) {
+            announced += NotificationRules.events(data: data, prefs: prefs, state: &state, now: now)
+                .filter { if case .cheapWindowStarts = $0 { return true } else { return false } }.count
+            now = now.addingTimeInterval(30)
+        }
+        XCTAssertEqual(announced, 1)
     }
 }
 

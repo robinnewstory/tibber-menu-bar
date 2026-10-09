@@ -52,7 +52,7 @@ struct SettingsView: View {
             Text("Tibber account")
         } footer: {
             Text(model.hasToken
-                 ? "Your token is stored in the macOS Keychain and only ever sent to api.tibber.com."
+                 ? "Your token is stored in the macOS Keychain and only ever sent to Tibber."
                  : "Create a personal access token on developer.tibber.com under Settings → Access Token, then paste it here.")
         }
     }
