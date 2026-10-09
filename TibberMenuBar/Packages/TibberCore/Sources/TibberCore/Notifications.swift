@@ -77,27 +77,11 @@ public enum NotificationRules {
         return f.string(from: date)
     }
 
-    /// Title and body for a notification.
-    public static func text(for event: PriceEvent, timeZone: TimeZone, style: LabelStyle = .cents) -> (title: String, body: String) {
-        switch event {
-        case .tomorrowPublished(let low, let high, let avg, let currency):
-            return ("Tomorrow's prices are in",
-                    "Low \(PriceFormatter.menuBar(low, currency: currency, style: style)), average \(PriceFormatter.menuBar(avg, currency: currency, style: style)), high \(PriceFormatter.menuBar(high, currency: currency, style: style)).")
-        case .cheapWindowStarts(let w, let currency):
-            return ("Cheap \(w.slotsHours) h window starts \(PriceFormatter.time(w.start, timeZone: timeZone))",
-                    "Until \(PriceFormatter.time(w.end, timeZone: timeZone)), average \(PriceFormatter.menuBar(w.average, currency: currency, style: style)).")
-        case .belowThreshold(let price, let threshold, let currency):
-            return ("Price dropped below \(PriceFormatter.menuBar(threshold, currency: currency, style: style))",
-                    "Now \(PriceFormatter.menuBar(price, currency: currency, style: style)).")
-        case .aboveThreshold(let price, let threshold, let currency):
-            return ("Price rose above \(PriceFormatter.menuBar(threshold, currency: currency, style: style))",
-                    "Now \(PriceFormatter.menuBar(price, currency: currency, style: style)).")
-        }
-    }
 }
 
-extension PlannedWindow {
-    var slotsHours: String {
+public extension PlannedWindow {
+    /// Length as "2" or "1.5", for notification titles.
+    var hoursText: String {
         let hours = end.timeIntervalSince(start) / 3600
         return hours == hours.rounded() ? String(Int(hours)) : String(format: "%.1f", hours)
     }

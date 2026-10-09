@@ -10,6 +10,7 @@ struct PopoverView: View {
     @State private var scrubbed: PricePoint?
     @State private var day: ChartDay = .today
     @Environment(\.openSettings) private var openSettings
+    @Environment(\.isSnapshot) private var isSnapshot
 
     enum ChartDay: Hashable { case today, tomorrow, both }
 
@@ -26,7 +27,8 @@ struct PopoverView: View {
             } else {
                 VStack(spacing: 6) {
                     Image(systemName: "bolt.slash").font(.title2)
-                    Text(model.lastError ?? "No prices yet").font(.callout).multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
+                    if let error = model.lastError { Text(verbatim: error).font(.callout).multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true) }
+                    else { Text("No prices yet").font(.callout) }
                 }
                 .foregroundStyle(.secondary).frame(maxWidth: .infinity, minHeight: 120)
             }
@@ -48,15 +50,14 @@ struct PopoverView: View {
         return HStack(spacing: 12) {
             Tile(accent: accent) {
                 VStack(alignment: .leading, spacing: 4) {
-                    caption(scrubbed == nil ? "Price now · \(shown.map { PriceFormatter.time($0.startsAt, timeZone: data.timeZone) } ?? "–")"
-                            : "\(isTomorrow(shown, data) ? "Tomorrow" : "Selected") · \(PriceFormatter.slotRange(shown!, slotLength: data.resolution.slotLength, timeZone: data.timeZone))")
+                    caption(priceCaption(shown, data))
                     if let slot = shown {
                         HStack(alignment: .firstTextBaseline, spacing: 3) {
                             Text(bigNumber(slot.total, data)).font(.system(size: 32, weight: .bold, design: .rounded)).monospacedDigit().lineLimit(1).minimumScaleFactor(0.7)
                             Text(bigUnit(data)).font(.caption).foregroundStyle(.secondary)
                         }
                         HStack(spacing: 4) {
-                            Text(tier?.label ?? "")
+                            Text(verbatim: tier?.localizedLabel ?? "")
                             if scrubbed == nil, let current = model.current, let next = data.next(after: current.startsAt) {
                                 Text("· next \(PriceFormatter.menuBar(next.total, currency: data.currency, style: .cents)) \(model.trend?.arrow ?? "")")
                             }
@@ -70,7 +71,7 @@ struct PopoverView: View {
             }
             Tile {
                 VStack(alignment: .leading, spacing: 4) {
-                    caption("Power now")
+                    caption(String(localized: "Power now"))
                     if model.liveEnabled {
                         let live = model.freshLive ?? model.live
                         HStack(spacing: 10) {
@@ -82,7 +83,8 @@ struct PopoverView: View {
                         Text(powerSubline(live)).font(.caption).foregroundStyle(.secondary).lineLimit(1)
                     } else {
                         Text("—").font(.system(size: 26, weight: .bold, design: .rounded)).foregroundStyle(.secondary)
-                        Text(model.liveSupported ? "turned off in Settings" : "needs a Tibber Pulse").font(.caption).foregroundStyle(.secondary)
+                        if model.liveSupported { Text("turned off in Settings").font(.caption).foregroundStyle(.secondary) }
+                        else { Text("needs a Tibber Pulse").font(.caption).foregroundStyle(.secondary) }
                     }
                 }
             }
@@ -95,20 +97,28 @@ struct PopoverView: View {
         return min(1, max(0, live.power / ceiling))
     }
 
+    private func priceCaption(_ shown: PricePoint?, _ data: PriceData) -> String {
+        guard let shown, scrubbed != nil else {
+            return String(localized: "Price now · \(shown.map { PriceFormatter.time($0.startsAt, timeZone: data.timeZone) } ?? "–")")
+        }
+        let range = PriceFormatter.slotRange(shown, slotLength: data.resolution.slotLength, timeZone: data.timeZone)
+        return isTomorrow(shown, data) ? String(localized: "Tomorrow · \(range)") : String(localized: "Selected · \(range)")
+    }
+
     private func powerSubline(_ live: LiveMeasurement?) -> String {
         guard let live else { return liveStatusText }
-        if model.freshLive == nil { return "last reading \(Age.text(from: live.timestamp, to: model.now))" }
-        if let peak = live.maxPower { return "peak today \(LiveMeasurement.formatPower(peak))" }
-        return "live"
+        if model.freshLive == nil { return String(localized: "last reading \(Age.text(from: live.timestamp, to: model.now))") }
+        if let peak = live.maxPower { return String(localized: "peak today \(LiveMeasurement.formatPower(peak))") }
+        return String(localized: "live")
     }
 
     private var liveStatusText: String {
         switch model.liveStatus {
-        case .idle: return "stream off"
-        case .connecting: return "connecting to Pulse…"
-        case .connected: return "waiting for the first reading…"
-        case .reconnecting(let s): return "reconnecting in \(s) s"
-        case .failed(let why): return "stream failed: \(why)"
+        case .idle: return String(localized: "stream off")
+        case .connecting: return String(localized: "connecting to Pulse…")
+        case .connected: return String(localized: "waiting for the first reading…")
+        case .reconnecting(let s): return String(localized: "reconnecting in \(s) s")
+        case .failed(let why): return String(localized: "stream failed: \(why)")
         }
     }
 
@@ -120,17 +130,18 @@ struct PopoverView: View {
         return HStack(spacing: 12) {
             Tile {
                 VStack(alignment: .leading, spacing: 2) {
-                    caption("Today")
-                    Text(live?.accumulatedConsumption.map { String(format: "%.1f kWh", $0) } ?? "—").font(.system(size: 17, weight: .semibold, design: .rounded)).monospacedDigit()
-                    Text(live?.accumulatedCost.map { PriceFormatter.currencyAmount($0, currency: live?.currency ?? data.currency) } ?? (model.liveSupported ? "no reading yet" : "needs a Tibber Pulse")).font(.caption).foregroundStyle(.secondary)
+                    caption(String(localized: "Today"))
+                    Text(verbatim: live?.accumulatedConsumption.map { $0.formatted(.number.precision(.fractionLength(1))) + " kWh" } ?? "—").font(.system(size: 17, weight: .semibold, design: .rounded)).monospacedDigit()
+                    Text(verbatim: live?.accumulatedCost.map { PriceFormatter.currencyAmount($0, currency: live?.currency ?? data.currency) }
+                         ?? (model.liveSupported ? String(localized: "no reading yet") : String(localized: "needs a Tibber Pulse"))).font(.caption).foregroundStyle(.secondary)
                 }
             }
             Tile {
                 VStack(alignment: .leading, spacing: 2) {
-                    caption("Low · high")
+                    caption(String(localized: "Low · high"))
                     if let s = stats {
-                        Text("\(cents(s.min.total)) · \(cents(s.max.total))").font(.system(size: 17, weight: .semibold, design: .rounded)).monospacedDigit().lineLimit(1).minimumScaleFactor(0.8)
-                        Text("\(PriceFormatter.time(s.min.startsAt, timeZone: data.timeZone)) · \(PriceFormatter.time(s.max.startsAt, timeZone: data.timeZone))").font(.caption).foregroundStyle(.secondary)
+                        Text(verbatim: "\(cents(s.min.total)) · \(cents(s.max.total))").font(.system(size: 17, weight: .semibold, design: .rounded)).monospacedDigit().lineLimit(1).minimumScaleFactor(0.7)
+                        Text(verbatim: "\(PriceFormatter.time(s.min.startsAt, timeZone: data.timeZone)) · \(PriceFormatter.time(s.max.startsAt, timeZone: data.timeZone))").font(.caption).foregroundStyle(.secondary)
                     } else {
                         Text("—").font(.system(size: 17, weight: .semibold, design: .rounded))
                         Text("no prices").font(.caption).foregroundStyle(.secondary)
@@ -140,15 +151,23 @@ struct PopoverView: View {
             Tile {
                 VStack(alignment: .leading, spacing: 2) {
                     HStack(spacing: 4) {
-                        Menu {
-                            ForEach(Planner.durationsHours, id: \.self) { h in
-                                Button("\(h) h") { model.notifications.plannerHours = h }
+                        if isSnapshot {
+                            HStack(spacing: 3) {
+                                Text("Cheapest \(model.notifications.plannerHours) h")
+                                Image(systemName: "chevron.down").font(.system(size: 7, weight: .bold))
                             }
-                        } label: {
-                            Text("Cheapest \(model.notifications.plannerHours) h")
+                            .font(.caption2.weight(.semibold)).foregroundStyle(.secondary).fixedSize()
+                        } else {
+                            Menu {
+                                ForEach(Planner.durationsHours, id: \.self) { h in
+                                    Button("\(h) h") { model.notifications.plannerHours = h }
+                                }
+                            } label: {
+                                Text("Cheapest \(model.notifications.plannerHours) h")
+                            }
+                            .menuStyle(.borderlessButton).menuIndicator(.visible).fixedSize()
+                            .font(.caption2.weight(.semibold)).foregroundStyle(.secondary)
                         }
-                        .menuStyle(.borderlessButton).menuIndicator(.visible).fixedSize()
-                        .font(.caption2.weight(.semibold)).foregroundStyle(.secondary)
                         Spacer(minLength: 0)
                         Button {
                             model.notifications.cheapWindowStart.toggle()
@@ -157,9 +176,10 @@ struct PopoverView: View {
                                 .font(.system(size: 10)).foregroundStyle(model.notifications.cheapWindowStart ? Color.accentColor : Color.secondary)
                         }
                         .buttonStyle(.plain).help("Notify me 10 minutes before this window starts")
+                        .accessibilityLabel(model.notifications.cheapWindowStart ? "Window reminder on" : "Window reminder off")
                     }
                     if let w = model.plannedWindow {
-                        Text(PriceFormatter.time(w.start, timeZone: data.timeZone) + (data.today.contains { $0.startsAt == w.start } ? "" : " tmrw"))
+                        Text(verbatim: windowStartText(w, data))
                             .font(.system(size: 17, weight: .semibold, design: .rounded)).monospacedDigit().lineLimit(1).minimumScaleFactor(0.8)
                         Text("avg \(cents(w.average))").font(.caption).foregroundStyle(.secondary)
                     } else {
@@ -169,6 +189,11 @@ struct PopoverView: View {
                 }
             }
         }
+    }
+
+    private func windowStartText(_ w: PlannedWindow, _ data: PriceData) -> String {
+        let start = PriceFormatter.time(w.start, timeZone: data.timeZone)
+        return data.today.contains { $0.startsAt == w.start } ? start : String(localized: "\(start) tmrw")
     }
 
     // MARK: Chart card
@@ -185,25 +210,44 @@ struct PopoverView: View {
                 HStack {
                     Text(day == .tomorrow ? "Tomorrow" : (day == .both ? "Today & tomorrow" : "Today")).font(.caption.weight(.semibold))
                     Spacer()
-                    Picker("", selection: $day) {
-                        Text("Today").tag(ChartDay.today)
-                        Text("Tomorrow").tag(ChartDay.tomorrow)
-                        if data.hasTomorrow { Text("Both").tag(ChartDay.both) }
+                    if isSnapshot {
+                        daySwitchStandIn
+                    } else {
+                        Picker("Day", selection: $day) {
+                            Text("Today").tag(ChartDay.today)
+                            Text("Tomorrow").tag(ChartDay.tomorrow)
+                            if data.hasTomorrow { Text("Both").tag(ChartDay.both) }
+                        }
+                        .pickerStyle(.segmented).labelsHidden().controlSize(.mini).fixedSize()
+                        .disabled(!data.hasTomorrow)
                     }
-                    .pickerStyle(.segmented).labelsHidden().controlSize(.mini).fixedSize()
-                    .disabled(!data.hasTomorrow)
                 }
                 PriceChart(points: points, data: data, current: day == .tomorrow ? nil : model.current, now: model.now,
                            showMidnight: day == .both, options: model.popover.chart, window: model.plannedWindow, tierFor: model.tier(for:), selected: $scrubbed)
                     .frame(height: model.popover.chart.height.points)
+                    .accessibilityLabel("Price chart")
             }
         }
+    }
+
+    /// Looks like the mini segmented control; only used in screenshots.
+    private var daySwitchStandIn: some View {
+        HStack(spacing: 2) {
+            ForEach([("Today", true), ("Tomorrow", false), ("Both", false)], id: \.0) { title, selected in
+                Text(LocalizedStringKey(title)).font(.system(size: 9, weight: .medium))
+                    .padding(.horizontal, 7).padding(.vertical, 2)
+                    .background(selected ? Color(nsColor: .controlBackgroundColor) : .clear, in: RoundedRectangle(cornerRadius: 4))
+                    .shadow(color: selected ? .black.opacity(0.12) : .clear, radius: 1, y: 0.5)
+            }
+        }
+        .padding(2)
+        .background(Color.primary.opacity(0.07), in: RoundedRectangle(cornerRadius: 6))
     }
 
     // MARK: Pieces
 
     private func caption(_ text: String) -> some View {
-        Text(text.uppercased()).font(.system(size: 10, weight: .semibold)).tracking(0.6).foregroundStyle(.primary.opacity(0.6)).lineLimit(1)
+        Text(verbatim: text.uppercased()).font(.system(size: 10, weight: .semibold)).tracking(0.6).foregroundStyle(.primary.opacity(0.6)).lineLimit(1)
     }
 
     private func cents(_ total: Double) -> String { PriceFormatter.menuBar(total, currency: model.data?.currency ?? "EUR", style: .cents) }
@@ -255,10 +299,14 @@ struct PopoverView: View {
                 Text("retry in \(Int(Backoff.delay(afterFailures: model.consecutiveFailures) / 60)) min").font(.caption2).foregroundStyle(.tertiary)
             }
             Spacer()
-            Button { Task { await model.refresh(force: true) } } label: { Image(systemName: "arrow.clockwise") }
-                .buttonStyle(.borderless).disabled(model.isLoading || !model.hasToken).help("Refresh now")
-            Button { openSettings(); NSApp.activate(ignoringOtherApps: true) } label: { Image(systemName: "gearshape") }.buttonStyle(.borderless).help("Settings")
-            Button { NSApp.terminate(nil) } label: { Image(systemName: "power") }.buttonStyle(.borderless).help("Quit")
+            if isSnapshot {
+                ForEach(["arrow.clockwise", "gearshape", "power"], id: \.self) { Image(systemName: $0).foregroundStyle(.secondary) }
+            } else {
+                Button { Task { await model.refresh(force: true) } } label: { Image(systemName: "arrow.clockwise") }
+                    .buttonStyle(.borderless).disabled(model.isLoading || !model.hasToken).help("Refresh now").accessibilityLabel("Refresh now")
+                Button { openSettings(); NSApp.activate(ignoringOtherApps: true) } label: { Image(systemName: "gearshape") }.buttonStyle(.borderless).help("Settings").accessibilityLabel("Settings")
+                Button { NSApp.terminate(nil) } label: { Image(systemName: "power") }.buttonStyle(.borderless).help("Quit").accessibilityLabel("Quit")
+            }
         }
     }
 }

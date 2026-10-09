@@ -26,7 +26,7 @@ struct MenuBarOptions: Codable, Equatable {
     enum Icon: String, Codable, CaseIterable {
         case bolt, dot, none
         var label: String {
-            switch self { case .bolt: return "Bolt"; case .dot: return "Level dot"; case .none: return "None" }
+            switch self { case .bolt: return String(localized: "Bolt"); case .dot: return String(localized: "Level dot"); case .none: return String(localized: "None") }
         }
     }
     var format: LabelStyle = .cents
@@ -47,20 +47,20 @@ struct PopoverOptions: Codable, Equatable {
 struct ChartOptions: Codable, Equatable {
     enum Style: String, Codable, CaseIterable {
         case bars, line, area
-        var label: String { switch self { case .bars: return "Bars"; case .line: return "Step line"; case .area: return "Area" } }
+        var label: String { switch self { case .bars: return String(localized: "Bars"); case .line: return String(localized: "Step line"); case .area: return String(localized: "Area") } }
     }
     enum ColorMode: String, Codable, CaseIterable {
         case tier, mono
-        var label: String { switch self { case .tier: return "By price level"; case .mono: return "Single color" } }
+        var label: String { switch self { case .tier: return String(localized: "By price level"); case .mono: return String(localized: "Single color") } }
     }
     enum Height: String, Codable, CaseIterable {
         case compact, normal, tall
-        var label: String { switch self { case .compact: return "Compact"; case .normal: return "Normal"; case .tall: return "Tall" } }
+        var label: String { switch self { case .compact: return String(localized: "Compact"); case .normal: return String(localized: "Normal"); case .tall: return String(localized: "Tall") } }
         var points: CGFloat { switch self { case .compact: return 130; case .normal: return 170; case .tall: return 220 } }
     }
     enum DefaultDay: String, Codable, CaseIterable {
         case today, both
-        var label: String { switch self { case .today: return "Today"; case .both: return "Today and tomorrow" } }
+        var label: String { switch self { case .today: return String(localized: "Today"); case .both: return String(localized: "Today and tomorrow") } }
     }
     var style: Style = .bars
     var colorMode: ColorMode = .tier

@@ -3,7 +3,12 @@ import Foundation
 /// Minimal GraphQL client for api.tibber.com. Only what the menu bar needs: homes and price info.
 public final class TibberClient {
     public static let endpoint = URL(string: "https://api.tibber.com/v1-beta/gql")!
-    public static let userAgent = "TibberMenuBar/0.1 (macOS; +https://github.com/newstory)"
+    /// Identifies the app to Tibber, as their API guidelines ask. The app sets the version at launch.
+    public static var userAgent = "TibberMenuBar (macOS; +https://github.com/robinnewstory/tibber-menu-bar)"
+
+    public static func setAppVersion(_ version: String) {
+        userAgent = "TibberMenuBar/\(version) (macOS; +https://github.com/robinnewstory/tibber-menu-bar)"
+    }
 
     private let token: String
     private let session: URLSession

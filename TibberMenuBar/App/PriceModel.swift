@@ -115,7 +115,7 @@ final class PriceModel: ObservableObject {
             first += (menuBar.trendArrow ? " " : " → ") + PriceFormatter.menuBar(next.total, currency: data.currency, style: menuBar.format)
         }
         var parts = [first]
-        if menuBar.levelWord, let tier = currentTier { parts.append(tier.label) }
+        if menuBar.levelWord, let tier = currentTier { parts.append(tier.localizedLabel) }
         if menuBar.livePower, liveEnabled, let live = freshLive { parts.append(LiveMeasurement.formatPower(live.power)) }
         return parts.joined(separator: " · ")
     }
@@ -200,9 +200,18 @@ final class PriceModel: ObservableObject {
         let events = NotificationRules.events(data: data, prefs: notifications, state: &state, now: now)
         if state != notificationState { notificationState = state }
         for event in events {
-            let text = NotificationRules.text(for: event, timeZone: data.timeZone, style: menuBar.format)
+            let text = NotificationText.text(for: event, timeZone: data.timeZone, style: menuBar.format)
             NotificationManager.shared.deliver(title: text.title, body: text.body)
         }
+    }
+
+    /// Demo prices and a demo Pulse reading, for `--snapshot`. Never starts timers or network.
+    func loadDemo() {
+        hasToken = true
+        data = DemoData.prices(now: now)
+        live = DemoData.live(now: now)
+        liveStatus = .connected
+        updateCurrent()
     }
 
     // MARK: Token and homes
@@ -219,15 +228,15 @@ final class PriceModel: ObservableObject {
     func saveToken(_ raw: String) async -> String? {
         let token = Self.sanitize(raw)
         if token.lowercased().hasPrefix("http") || token.contains("/") || token.contains(":") {
-            return "That is a web address, not a token. On developer.tibber.com → Settings → Access Token, create a token and use its copy button."
+            return String(localized: "That is a web address, not a token. On developer.tibber.com → Settings → Access Token, create a token and use its copy button.")
         }
         if token.count < 20 || !token.allSatisfy({ $0.isASCII && ($0.isLetter || $0.isNumber || "-_.".contains($0)) }) {
-            return "That doesn't look like a Tibber access token. Copy the whole token from developer.tibber.com → Settings → Access Token."
+            return String(localized: "That doesn't look like a Tibber access token. Copy the whole token from developer.tibber.com → Settings → Access Token.")
         }
         do {
             try tokenStore.save(token)
         } catch {
-            return "Could not store the token in the Keychain: \(error.localizedDescription)"
+            return String(localized: "Could not store the token in the Keychain: \(error.localizedDescription)")
         }
         hasToken = true
         lastError = nil
@@ -285,7 +294,7 @@ final class PriceModel: ObservableObject {
         } catch {
             consecutiveFailures += 1
             isOffline = Self.isOfflineError(error)
-            lastError = isOffline ? "Offline, showing cached prices" : error.localizedDescription
+            lastError = isOffline ? String(localized: "Offline, showing cached prices") : ErrorText.describe(error)
         }
         updateCurrent()
         evaluateNotifications()
@@ -343,7 +352,7 @@ final class PriceModel: ObservableObject {
             do {
                 if newValue { try SMAppService.mainApp.register() } else { try SMAppService.mainApp.unregister() }
             } catch {
-                lastError = "Launch at login: \(error.localizedDescription)"
+                lastError = String(localized: "Launch at login: \(error.localizedDescription)")
             }
             objectWillChange.send()
         }

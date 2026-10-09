@@ -98,8 +98,8 @@ struct PriceChart: View {
                         .lineStyle(StrokeStyle(lineWidth: selected == nil ? 1 : 1.5))
                         .foregroundStyle(.primary.opacity(0.6))
                         .annotation(position: .top, alignment: .center) {
-                            Text(markerIsCurrent ? String(format: "%.1f", marker.total * 100)
-                                 : "\(String(format: "%.1f", marker.total * 100)) · \(PriceFormatter.time(marker.startsAt, timeZone: timeZone))")
+                            Text(verbatim: markerIsCurrent ? markerCents(marker)
+                                 : "\(markerCents(marker)) · \(PriceFormatter.time(marker.startsAt, timeZone: timeZone))")
                                 .font(.system(size: 9, weight: .semibold))
                                 .padding(.horizontal, 5).padding(.vertical, 1)
                                 .background(markerIsCurrent ? AnyShapeStyle(TierColor.color(.cheap)) : AnyShapeStyle(.regularMaterial), in: Capsule())
@@ -159,6 +159,8 @@ struct PriceChart: View {
     }
 
     /// Cents, padded to the nearest 5 around the day's range so the marks use the full height (or from zero).
+    private func markerCents(_ p: PricePoint) -> String { (p.total * 100).formatted(.number.precision(.fractionLength(1))) }
+
     private var yDomain: ClosedRange<Double> {
         guard let s = PriceMath.stats(points) else { return 0...40 }
         let lo = options.fromZero ? min(0, floor(s.min.total * 100 / 5) * 5) : (floor((s.min.total * 100 - 2) / 5) * 5)

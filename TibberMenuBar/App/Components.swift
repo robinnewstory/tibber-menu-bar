@@ -19,6 +19,7 @@ struct Tile<Content: View>: View {
         }
         .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(Color.primary.opacity(0.10), lineWidth: 1))
+        .accessibilityElement(children: .combine)
     }
 }
 
@@ -59,11 +60,11 @@ enum TierColor {
 enum Age {
     static func text(from date: Date, to now: Date) -> String {
         let s = max(0, now.timeIntervalSince(date))
-        if s < 60 { return "just now" }
+        if s < 60 { return String(localized: "just now") }
         let m = Int(s / 60)
-        if m < 60 { return "\(m) min ago" }
+        if m < 60 { return String(localized: "\(m) min ago") }
         let h = m / 60
-        return h < 24 ? "\(h) h ago" : "\(h / 24) d ago"
+        return h < 24 ? String(localized: "\(h) h ago") : String(localized: "\(h / 24) d ago")
     }
 }
 

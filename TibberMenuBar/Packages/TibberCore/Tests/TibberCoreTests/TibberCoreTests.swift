@@ -236,8 +236,7 @@ final class PlannerAndRulesTests: XCTestCase {
         XCTAssertEqual(events, [.belowThreshold(price: 0.05, threshold: 0.10, currency: "EUR")])
         XCTAssertTrue(NotificationRules.events(data: data, prefs: prefs, state: &state, now: inWindow.addingTimeInterval(60)).isEmpty)
 
-        let text = NotificationRules.text(for: events[0], timeZone: data.timeZone)
-        XCTAssertTrue(text.title.contains("below"))
+        XCTAssertEqual(w.hoursText, "2")
     }
 
     func testLiveProtocolParsing() throws {
@@ -267,5 +266,49 @@ final class TierTests: XCTestCase {
         XCTAssertEqual(TierResolver.tier(for: noLevel, source: .tibber, dayAverage: nil), .normal)
         XCTAssertTrue(DisplayTier.veryCheap.isCheap)
         XCTAssertTrue(DisplayTier.veryExpensive.isExpensive)
+    }
+}
+
+final class OddDayTests: XCTestCase {
+    let home = HomeInfo(id: "h", nickname: "Thuis", timeZone: "Europe/Amsterdam", city: nil, hasSubscription: true)
+
+    /// 25 October 2026 is the autumn switch in Europe/Amsterdam: 25 hours, 100 quarter-hour slots.
+    func testDaylightSavingDayHas100Slots() throws {
+        let start = try XCTUnwrap(DateParsing.parse("2026-10-25T00:00:00+02:00"))
+        let end = try XCTUnwrap(DateParsing.parse("2026-10-26T00:00:00+01:00"))
+        XCTAssertEqual(end.timeIntervalSince(start), 25 * 3600)
+        let slots = stride(from: 0.0, to: end.timeIntervalSince(start), by: 900).map { PricePoint(startsAt: start.addingTimeInterval($0), total: 0.2, currency: "EUR") }
+        XCTAssertEqual(slots.count, 100)
+        let data = PriceData(home: home, resolution: .quarterHourly, today: slots, tomorrow: [], fetchedAt: start)
+        // the repeated 02:00-03:00 hour still resolves to one slot per instant
+        let inRepeatedHour = try XCTUnwrap(DateParsing.parse("2026-10-25T02:30:00+01:00"))
+        XCTAssertEqual(data.current(at: inRepeatedHour)?.startsAt, DateParsing.parse("2026-10-25T02:30:00+01:00"))
+        XCTAssertTrue(data.coversToday(inRepeatedHour))
+        XCTAssertEqual(Planner.cheapestWindow(in: data, hours: 2, from: start)?.slots, 8)
+        // and the spring day (29 March 2026) has 92
+        let s2 = try XCTUnwrap(DateParsing.parse("2026-03-29T00:00:00+01:00"))
+        let e2 = try XCTUnwrap(DateParsing.parse("2026-03-30T00:00:00+02:00"))
+        XCTAssertEqual(Int(e2.timeIntervalSince(s2) / 900), 92)
+    }
+
+    func testNegativePricesFormatAndRank() throws {
+        let points = [-0.012, 0.0, 0.05].enumerated().map { PricePoint(startsAt: Date(timeIntervalSince1970: 1_800_000_000 + Double($0.offset) * 3600), total: $0.element, currency: "EUR") }
+        let en = Locale(identifier: "en_US")
+        XCTAssertEqual(PriceFormatter.menuBar(-0.012, currency: "EUR", style: .cents, locale: en), "-1.2¢")
+        XCTAssertEqual(PriceFormatter.menuBar(-0.012, currency: "EUR", style: .currency, locale: en), "-€0.01")
+        let stats = try XCTUnwrap(PriceMath.stats(points))
+        XCTAssertEqual(stats.min.total, -0.012)
+        XCTAssertEqual(PriceMath.cheapestWindow(points, slots: 2)?.start.total, -0.012)
+        XCTAssertEqual(Trend.between(current: points[0], next: points[1]), .up)
+        XCTAssertEqual(PriceMath.relativeTier(-0.01, average: 0.0), .normal, "a zero average yields no tiers rather than dividing by zero")
+    }
+
+    func testOtherCurrencies() {
+        let en = Locale(identifier: "en_US")
+        // NumberFormatter separates a currency code from the number with a non-breaking space.
+        func plain(_ s: String) -> String { s.replacingOccurrences(of: "\u{00A0}", with: " ") }
+        XCTAssertEqual(PriceFormatter.menuBar(0.9876, currency: "NOK", style: .cents, locale: en), "98.8 øre")
+        XCTAssertEqual(plain(PriceFormatter.menuBar(0.9876, currency: "SEK", style: .currency, locale: en)), "SEK 0.99")
+        XCTAssertEqual(plain(PriceFormatter.detailed(0.9876, currency: "NOK", locale: en)), "NOK 0.988/kWh")
     }
 }

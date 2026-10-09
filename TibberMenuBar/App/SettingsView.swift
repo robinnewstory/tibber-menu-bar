@@ -32,14 +32,14 @@ struct SettingsView: View {
                     connecting = true
                     Task {
                         let problem = await model.saveToken(tokenInput)
-                        accountMessage = problem ?? "Connected."
+                        accountMessage = problem ?? String(localized: "Connected.")
                         if problem == nil { tokenInput = "" }
                         connecting = false
                     }
                 }
                 .disabled(tokenInput.trimmingCharacters(in: .whitespaces).isEmpty || connecting)
                 if model.hasToken {
-                    Button("Disconnect") { model.clearToken(); accountMessage = "Token removed." }
+                    Button("Disconnect") { model.clearToken(); accountMessage = String(localized: "Token removed.") }
                 }
                 Spacer()
                 Link("Create a token…", destination: URL(string: "https://developer.tibber.com/settings/access-token")!)
@@ -67,7 +67,7 @@ struct SettingsView: View {
             }
             .disabled(model.homes.count <= 1)
             Picker("Resolution", selection: $model.prices.resolution) {
-                ForEach(Resolution.allCases, id: \.self) { Text($0.label).tag($0) }
+                ForEach(Resolution.allCases, id: \.self) { Text($0.localizedLabel).tag($0) }
             }
             Picker("Cheap and expensive mean", selection: $model.prices.levelSource) {
                 Text("Tibber's level, compared with recent days").tag(LevelSource.tibber)
@@ -82,8 +82,8 @@ struct SettingsView: View {
 
     private func homeLabel(_ home: HomeInfo) -> String {
         var parts = [home.displayName]
-        if !home.hasSubscription { parts.append("no subscription") }
-        if home.liveMeasurements { parts.append("Pulse") }
+        if !home.hasSubscription { parts.append(String(localized: "no subscription")) }
+        if home.liveMeasurements { parts.append(String(localized: "Pulse")) }
         return parts.joined(separator: " · ")
     }
 
@@ -92,7 +92,7 @@ struct SettingsView: View {
     private var menuBarSection: some View {
         Section {
             Picker("Price format", selection: $model.menuBar.format) {
-                ForEach(LabelStyle.allCases, id: \.self) { Text($0.label).tag($0) }
+                ForEach(LabelStyle.allCases, id: \.self) { Text($0.localizedLabel).tag($0) }
             }
             Picker("Icon", selection: $model.menuBar.icon) {
                 ForEach(MenuBarOptions.Icon.allCases, id: \.self) { Text($0.label).tag($0) }
@@ -108,7 +108,7 @@ struct SettingsView: View {
         } header: {
             Text("Menu bar")
         } footer: {
-            Text(model.liveEnabled ? "" : "Live power in the menu bar needs the Pulse stream, enabled under Popover.")
+            if !model.liveEnabled { Text("Live power in the menu bar needs the Pulse stream, enabled under Popover.") }
         }
     }
 
@@ -152,13 +152,17 @@ struct SettingsView: View {
         Section {
             Toggle("Cheapest window is about to start", isOn: $model.notifications.cheapWindowStart)
             Toggle("Tomorrow's prices are published", isOn: $model.notifications.tomorrowPublished)
-            ThresholdRow(title: "Price drops below", value: $model.notifications.belowCents, defaultValue: 15)
-            ThresholdRow(title: "Price rises above", value: $model.notifications.aboveCents, defaultValue: 35)
+            ThresholdRow(title: "Price drops below", unit: centUnit, value: $model.notifications.belowCents, defaultValue: 15)
+            ThresholdRow(title: "Price rises above", unit: centUnit, value: $model.notifications.aboveCents, defaultValue: 35)
         } header: {
             Text("Notifications")
         } footer: {
             Text("The window reminder comes 10 minutes ahead. Thresholds watch the current slot and fire once per crossing. macOS asks for permission the first time you enable one.")
         }
+    }
+
+    private var centUnit: String {
+        PriceFormatter.centSymbol(for: model.data?.currency ?? "EUR").trimmingCharacters(in: .whitespaces) + "/kWh"
     }
 
     // MARK: General
@@ -187,7 +191,8 @@ struct SettingsView: View {
 
 /// A toggle with a cents field that is only editable while the toggle is on.
 struct ThresholdRow: View {
-    let title: String
+    let title: LocalizedStringKey
+    let unit: String
     @Binding var value: Double?
     let defaultValue: Double
     @State private var text = ""
@@ -201,14 +206,15 @@ struct ThresholdRow: View {
                     if on { text = Self.format(value ?? defaultValue) }
                 }
             ))
-            TextField("", text: $text)
+            TextField("Threshold", text: $text)
+                .labelsHidden()
                 .frame(width: 56)
                 .multilineTextAlignment(.trailing)
                 .textFieldStyle(.roundedBorder)
                 .disabled(value == nil)
                 .onSubmit { commit() }
                 .onChange(of: text) { _, _ in commit() }
-            Text("¢/kWh").foregroundStyle(.secondary)
+            Text(verbatim: unit).foregroundStyle(.secondary)
         }
         .onAppear { text = value.map(Self.format) ?? Self.format(defaultValue) }
     }

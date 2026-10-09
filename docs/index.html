@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tibber Menu Bar</title>
+<meta name="description" content="Your current Tibber electricity price in the macOS menu bar, with a price chart, a cheapest-window planner, live power from Tibber Pulse and notifications. Free and open source.">
+<link rel="icon" href="icon.png">
+<meta property="og:title" content="Tibber Menu Bar">
+<meta property="og:description" content="Your current Tibber electricity price, always in the macOS menu bar.">
+<meta property="og:image" content="https://robinnewstory.github.io/tibber-menu-bar/popover-light.png">
+<style>
+  :root {
+    --bg: #f6f7f9; --card: #ffffff; --text: #16202c; --muted: #5b6676; --line: #e3e7ec;
+    --accent: #14b8a6; --accent-dark: #0f9c8c; --hero: #0e1a2b; --hero2: #163a4a; --code: #eef1f5;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #0f141b; --card: #171e28; --text: #e8edf3; --muted: #9aa7b6; --line: #273242; --code: #1f2834; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 16px/1.55 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Helvetica, Arial, sans-serif; color: var(--text); background: var(--bg); }
+  a { color: var(--accent-dark); }
+  code, pre { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 0.92em; }
+  code { background: var(--code); padding: 2px 6px; border-radius: 5px; }
+  pre { background: var(--code); padding: 12px 14px; border-radius: 8px; overflow-x: auto; }
+  pre code { background: none; padding: 0; }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 0 20px; }
+
+  .hero { background: radial-gradient(120% 90% at 50% -10%, var(--hero2) 0%, var(--hero) 60%); color: #fff; text-align: center; padding: 64px 0 56px; }
+  .hero img.icon { width: 112px; height: 112px; border-radius: 26px; box-shadow: 0 16px 40px rgba(0,0,0,.45); }
+  .hero h1 { font-size: 40px; margin: 20px 0 6px; letter-spacing: -0.02em; }
+  .hero .tagline { font-size: 20px; color: #bcd1d9; margin: 0 0 26px; }
+  .hero img.menubar { height: 44px; border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,.4); margin-bottom: 28px; }
+  .button { display: inline-block; background: var(--accent); color: #062a26; font-weight: 600; font-size: 17px; padding: 13px 26px; border-radius: 12px; text-decoration: none; box-shadow: 0 10px 24px rgba(20,184,166,.35); }
+  .button:hover { background: #2fd0be; }
+  .hero .meta { color: #9fb6c0; font-size: 14px; margin: 16px 0 0; }
+  .hero .meta a { color: #cfe6ec; }
+  .hero .brew { margin-top: 14px; font-size: 14px; color: #9fb6c0; }
+  .hero .brew code { background: rgba(255,255,255,.1); color: #e6f2f5; }
+
+  .shot { text-align: center; margin: -32px auto 0; padding: 0 20px; }
+  .shot img { width: 100%; max-width: 520px; border-radius: 14px; box-shadow: 0 24px 60px rgba(0,0,0,.28); border: 1px solid var(--line); }
+  .shot p { color: var(--muted); font-size: 14px; margin-top: 12px; }
+
+  section { padding: 44px 0 8px; }
+  h2 { font-size: 26px; letter-spacing: -0.01em; margin: 0 0 18px; }
+  h3 { font-size: 17px; margin: 22px 0 8px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; }
+  .card h3 { margin: 0 0 6px; font-size: 16px; }
+  .card p { margin: 0; color: var(--muted); font-size: 15px; }
+  ol li, ul li { margin: 6px 0; }
+  .note { border-left: 3px solid var(--accent); background: var(--card); padding: 12px 16px; border-radius: 0 10px 10px 0; color: var(--muted); font-size: 15px; }
+  .steps { counter-reset: s; list-style: none; padding: 0; }
+  .steps li { counter-increment: s; position: relative; padding-left: 40px; margin: 12px 0; }
+  .steps li::before { content: counter(s); position: absolute; left: 0; top: 1px; width: 26px; height: 26px; border-radius: 50%; background: var(--accent); color: #062a26; font-weight: 700; font-size: 14px; display: grid; place-items: center; }
+  .langs { color: var(--muted); font-size: 15px; }
+  footer { margin-top: 56px; padding: 28px 0 40px; border-top: 1px solid var(--line); color: var(--muted); font-size: 14px; }
+  @media (max-width: 600px) { .hero h1 { font-size: 32px; } .hero { padding: 48px 0 44px; } }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <img class="icon" src="icon.png" alt="">
+    <h1>Tibber Menu Bar</h1>
+    <p class="tagline">Your current electricity price, always in the menu bar.</p>
+    <picture>
+      <source srcset="menubar-dark.png" media="(prefers-color-scheme: dark)">
+      <img class="menubar" src="menubar-light.png" alt="Menu bar item showing a bolt icon, the price 28.3¢ and a trend arrow">
+    </picture>
+    <div>
+      <a class="button" href="https://github.com/robinnewstory/tibber-menu-bar/releases/latest/download/Tibber-Menu-Bar.zip">Download for macOS</a>
+    </div>
+    <p class="meta">macOS 14 or later &middot; free &middot; open source &middot; <a href="https://github.com/robinnewstory/tibber-menu-bar">GitHub</a> &middot; <a href="https://github.com/robinnewstory/tibber-menu-bar/releases">all releases</a></p>
+    <p class="brew">or with Homebrew: <code>brew install --cask robinnewstory/tap/tibber-menu-bar</code></p>
+  </div>
+</header>
+
+<div class="shot">
+  <picture>
+    <source srcset="popover-dark.png" media="(prefers-color-scheme: dark)">
+    <img src="popover-light.png" alt="The popover: price now with level, live power with a gauge, today's usage and cost, low and high, the cheapest two-hour window and a price chart">
+  </picture>
+  <p>Click the price for the dashboard. Shown with demo data.</p>
+</div>
+
+<main class="wrap">
+  <section id="features">
+    <h2>What it does</h2>
+    <div class="grid">
+      <div class="card"><h3>Price in the menu bar</h3><p>The current slot's price, updated as the quarter hours roll by. Cents, currency or plain number, with an optional trend arrow, level word and the next slot's price.</p></div>
+      <div class="card"><h3>Today and tomorrow</h3><p>A chart of all 96 quarter-hour slots, colored by Tibber's price level. Hover or drag to read any slot; tomorrow appears as soon as Tibber publishes it.</p></div>
+      <div class="card"><h3>Cheapest window</h3><p>Finds the cheapest 1 to 6 hour window ahead of you, shades it in the chart and can remind you ten minutes before it starts.</p></div>
+      <div class="card"><h3>Live power from Pulse</h3><p>If your home has a Tibber Pulse, the popover shows the current draw, today's usage and cost, live. Optionally in the menu bar too.</p></div>
+      <div class="card"><h3>Notifications</h3><p>Tomorrow's prices are in, a cheap window is about to start, or the price crossed a threshold you set.</p></div>
+      <div class="card"><h3>Light on resources</h3><p>Prices are fetched a few times a day and cached. No background daemon, no accounts, no tracking.</p></div>
+    </div>
+    <p class="langs">Available in English, Dutch, German, Norwegian, Swedish, Danish, Finnish, French, Spanish and Italian. The app follows your macOS language.</p>
+  </section>
+
+  <section id="install">
+    <h2>Install</h2>
+    <ol class="steps">
+      <li><a href="https://github.com/robinnewstory/tibber-menu-bar/releases/latest/download/Tibber-Menu-Bar.zip">Download the zip</a>, double-click it, and drag <strong>Tibber Menu Bar</strong> into your Applications folder.</li>
+      <li>Open it once. macOS will say it <em>could not verify</em> the app: click <strong>Done</strong>.</li>
+      <li>Open <strong>System Settings → Privacy &amp; Security</strong>, scroll down to <em>Security</em>, and click <strong>Open Anyway</strong> next to the message about Tibber Menu Bar. Confirm with <strong>Open</strong>.</li>
+      <li>A bolt appears in the menu bar. Click it, then <strong>Open Settings…</strong> and paste your Tibber token (see below).</li>
+    </ol>
+    <h3>Why the warning?</h3>
+    <p class="note">The app is signed, but not notarized by Apple, because notarization needs a paid Apple Developer membership. The source code is public and you can build it yourself. On macOS 14 and earlier, right-click the app and choose <strong>Open</strong> instead of the System Settings step.</p>
+    <h3>Homebrew</h3>
+    <pre><code>brew install --cask robinnewstory/tap/tibber-menu-bar</code></pre>
+    <p>Add <code>--no-quarantine</code> to skip the Open Anyway step.</p>
+  </section>
+
+  <section id="token">
+    <h2>Get a Tibber token</h2>
+    <ol class="steps">
+      <li>Sign in at <a href="https://developer.tibber.com/settings/access-token">developer.tibber.com → Settings → Access Token</a> with your Tibber account.</li>
+      <li>Create a personal access token and copy it with the copy button.</li>
+      <li>In Tibber Menu Bar, open <strong>Settings</strong>, paste the token and click <strong>Connect</strong>. If you have several homes, pick one.</li>
+    </ol>
+    <p class="note">The token only reads your own account. Tibber Pulse is optional: without it the app still shows prices, the chart, the planner and notifications.</p>
+  </section>
+
+  <section id="privacy">
+    <h2>Privacy</h2>
+    <ul>
+      <li>Your token is stored in the macOS Keychain and is only ever sent to <code>api.tibber.com</code>.</li>
+      <li>The app talks to Tibber's API and to nothing else. There is no analytics, no crash reporting, no update check.</li>
+      <li>Prices are cached on your Mac so the menu bar fills instantly after launch.</li>
+    </ul>
+  </section>
+
+  <section id="faq">
+    <h2>Questions</h2>
+    <h3>Which macOS versions?</h3>
+    <p>macOS 14 Sonoma or later, Apple silicon and Intel.</p>
+    <h3>Does the price include taxes?</h3>
+    <p>It is Tibber's <em>total</em> price per kWh for your home: energy plus taxes and surcharges, the same number the Tibber app shows.</p>
+    <h3>How do I uninstall?</h3>
+    <p>Quit the app from the popover and move it to the Trash. Remove the token in Settings first if you want it gone from the Keychain.</p>
+    <h3>Is this an official Tibber app?</h3>
+    <p>No. Tibber Menu Bar is an independent, open-source project and is not affiliated with or endorsed by Tibber. It uses Tibber's public developer API.</p>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    Tibber Menu Bar is free software under the MIT license. Not affiliated with Tibber. Tibber and Pulse are trademarks of Tibber AS.
+    &middot; <a href="https://github.com/robinnewstory/tibber-menu-bar">Source on GitHub</a>
+    &middot; <a href="https://github.com/robinnewstory/tibber-menu-bar/issues">Report a problem</a>
+  </div>
+</footer>
+
+</body>
+</html>

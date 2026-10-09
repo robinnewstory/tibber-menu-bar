@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test-and-build:
+    name: Core tests and unsigned app build
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Xcode version
+        run: xcodebuild -version
+
+      - name: TibberCore tests
+        run: swift test --package-path TibberMenuBar/Packages/TibberCore
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate the Xcode project
+        run: |
+          cp TibberMenuBar/Config/Local.xcconfig.example TibberMenuBar/Config/Local.xcconfig
+          cd TibberMenuBar && xcodegen generate --spec project.yml
+
+      # Releases are built and signed locally (see TibberMenuBar/release.sh); CI only proves the app compiles.
+      - name: Build the app (unsigned)
+        run: |
+          cd TibberMenuBar
+          xcodebuild -project TibberMenuBar.xcodeproj -scheme TibberMenuBar -configuration Release \
+            -derivedDataPath build CODE_SIGNING_ALLOWED=NO -quiet build
+
+      - name: Check localizations made it into the bundle
+        run: ls "TibberMenuBar/build/Build/Products/Release/Tibber Menu Bar.app/Contents/Resources" | grep lproj
