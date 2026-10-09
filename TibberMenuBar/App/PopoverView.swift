@@ -13,7 +13,7 @@ struct PopoverView: View {
     enum ChartDay: Hashable { case today, tomorrow, both }
 
     var body: some View {
-        VStack(spacing: 10) {
+        VStack(spacing: 12) {
             if !model.hasToken {
                 onboarding
             } else if let data = model.data {
@@ -31,8 +31,8 @@ struct PopoverView: View {
             }
             footer
         }
-        .padding(12)
-        .frame(width: 420)
+        .padding(14)
+        .frame(width: 480)
         .background(Color(nsColor: .windowBackgroundColor).opacity(0.92))
         .onChange(of: day) { _, _ in scrubbed = nil }
     }
@@ -43,14 +43,14 @@ struct PopoverView: View {
         let shown = scrubbed ?? model.current
         let tier = shown.map { PriceMath.relativeTier($0.total, average: PriceMath.stats(data.today)?.average ?? $0.total) }
         let accent = TierColor.color(tier)
-        return HStack(spacing: 10) {
+        return HStack(spacing: 12) {
             Tile(accent: accent) {
                 VStack(alignment: .leading, spacing: 4) {
                     caption(scrubbed == nil ? "Price now · \(shown.map { PriceFormatter.time($0.startsAt, timeZone: data.timeZone) } ?? "–")"
                             : "\(isTomorrow(shown, data) ? "Tomorrow" : "Selected") · \(PriceFormatter.slotRange(shown!, slotLength: data.resolution.slotLength, timeZone: data.timeZone))")
                     if let slot = shown {
                         HStack(alignment: .firstTextBaseline, spacing: 3) {
-                            Text(bigNumber(slot.total, data)).font(.system(size: 28, weight: .bold, design: .rounded)).monospacedDigit().lineLimit(1).minimumScaleFactor(0.7)
+                            Text(bigNumber(slot.total, data)).font(.system(size: 32, weight: .bold, design: .rounded)).monospacedDigit().lineLimit(1).minimumScaleFactor(0.7)
                             Text(bigUnit(data)).font(.caption).foregroundStyle(.secondary)
                         }
                         HStack(spacing: 4) {
@@ -61,7 +61,7 @@ struct PopoverView: View {
                         }
                         .font(.caption.weight(.semibold)).foregroundStyle(accent).lineLimit(1)
                     } else {
-                        Text("—").font(.system(size: 28, weight: .bold, design: .rounded)).foregroundStyle(.secondary)
+                        Text("—").font(.system(size: 32, weight: .bold, design: .rounded)).foregroundStyle(.secondary)
                         Text("no price for this moment").font(.caption).foregroundStyle(.secondary)
                     }
                 }
@@ -74,12 +74,12 @@ struct PopoverView: View {
                         HStack(spacing: 10) {
                             PowerGauge(fraction: gaugeFraction(live), color: live == nil ? .gray : accent)
                             Text(live.map { LiveMeasurement.formatPower($0.power) } ?? "—")
-                                .font(.system(size: 22, weight: .bold, design: .rounded)).monospacedDigit().lineLimit(1).minimumScaleFactor(0.7)
+                                .font(.system(size: 26, weight: .bold, design: .rounded)).monospacedDigit().lineLimit(1).minimumScaleFactor(0.7)
                                 .foregroundStyle(model.freshLive == nil ? .secondary : .primary)
                         }
                         Text(powerSubline(live)).font(.caption).foregroundStyle(.secondary).lineLimit(1)
                     } else {
-                        Text("—").font(.system(size: 22, weight: .bold, design: .rounded)).foregroundStyle(.secondary)
+                        Text("—").font(.system(size: 26, weight: .bold, design: .rounded)).foregroundStyle(.secondary)
                         Text(model.liveSupported ? "live power is off in Settings" : "needs a Tibber Pulse").font(.caption).foregroundStyle(.secondary)
                     }
                 }
@@ -115,11 +115,11 @@ struct PopoverView: View {
     private func smallTiles(_ data: PriceData) -> some View {
         let stats = PriceMath.stats(data.today)
         let live = model.live
-        return HStack(spacing: 10) {
+        return HStack(spacing: 12) {
             Tile {
                 VStack(alignment: .leading, spacing: 2) {
                     caption("Today")
-                    Text(live?.accumulatedConsumption.map { String(format: "%.1f kWh", $0) } ?? "—").font(.system(size: 15, weight: .semibold, design: .rounded)).monospacedDigit()
+                    Text(live?.accumulatedConsumption.map { String(format: "%.1f kWh", $0) } ?? "—").font(.system(size: 17, weight: .semibold, design: .rounded)).monospacedDigit()
                     Text(live?.accumulatedCost.map { PriceFormatter.currencyAmount($0, currency: live?.currency ?? data.currency) } ?? "needs Pulse").font(.caption).foregroundStyle(.secondary)
                 }
             }
@@ -127,10 +127,10 @@ struct PopoverView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     caption("Low · high")
                     if let s = stats {
-                        Text("\(cents(s.min.total)) · \(cents(s.max.total))").font(.system(size: 15, weight: .semibold, design: .rounded)).monospacedDigit().lineLimit(1).minimumScaleFactor(0.8)
+                        Text("\(cents(s.min.total)) · \(cents(s.max.total))").font(.system(size: 17, weight: .semibold, design: .rounded)).monospacedDigit().lineLimit(1).minimumScaleFactor(0.8)
                         Text("\(PriceFormatter.time(s.min.startsAt, timeZone: data.timeZone)) · \(PriceFormatter.time(s.max.startsAt, timeZone: data.timeZone))").font(.caption).foregroundStyle(.secondary)
                     } else {
-                        Text("—").font(.system(size: 15, weight: .semibold, design: .rounded))
+                        Text("—").font(.system(size: 17, weight: .semibold, design: .rounded))
                         Text("no prices").font(.caption).foregroundStyle(.secondary)
                     }
                 }
@@ -158,10 +158,10 @@ struct PopoverView: View {
                     }
                     if let w = model.plannedWindow {
                         Text(PriceFormatter.time(w.start, timeZone: data.timeZone) + (data.today.contains { $0.startsAt == w.start } ? "" : " tmrw"))
-                            .font(.system(size: 15, weight: .semibold, design: .rounded)).monospacedDigit().lineLimit(1).minimumScaleFactor(0.8)
+                            .font(.system(size: 17, weight: .semibold, design: .rounded)).monospacedDigit().lineLimit(1).minimumScaleFactor(0.8)
                         Text("avg \(cents(w.average))").font(.caption).foregroundStyle(.secondary)
                     } else {
-                        Text("—").font(.system(size: 15, weight: .semibold, design: .rounded))
+                        Text("—").font(.system(size: 17, weight: .semibold, design: .rounded))
                         Text("no window in range").font(.caption).foregroundStyle(.secondary)
                     }
                 }
@@ -193,7 +193,7 @@ struct PopoverView: View {
                 }
                 PriceChart(points: points, data: data, current: day == .tomorrow ? nil : model.current, now: model.now,
                            showMidnight: day == .both, selected: $scrubbed)
-                    .frame(height: 130)
+                    .frame(height: 170)
             }
         }
     }
@@ -201,7 +201,7 @@ struct PopoverView: View {
     // MARK: Pieces
 
     private func caption(_ text: String) -> some View {
-        Text(text.uppercased()).font(.system(size: 9, weight: .semibold)).tracking(0.6).foregroundStyle(.primary.opacity(0.6)).lineLimit(1)
+        Text(text.uppercased()).font(.system(size: 10, weight: .semibold)).tracking(0.6).foregroundStyle(.primary.opacity(0.6)).lineLimit(1)
     }
 
     private func cents(_ total: Double) -> String { PriceFormatter.menuBar(total, currency: model.data?.currency ?? "EUR", style: .cents) }
@@ -273,8 +273,8 @@ struct Tile<Content: View>: View {
                 RoundedRectangle(cornerRadius: 2).fill(accent).frame(width: 3).padding(.vertical, 10)
             }
             content()
-                .padding(.horizontal, accent == nil ? 12 : 10)
-                .padding(.vertical, 10)
+                .padding(.horizontal, accent == nil ? 14 : 12)
+                .padding(.vertical, 12)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
         .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
@@ -295,8 +295,8 @@ struct PowerGauge: View {
                 .stroke(color, style: StrokeStyle(lineWidth: 5, lineCap: .round))
         }
         .rotationEffect(.degrees(180))
-        .frame(width: 44, height: 44)
-        .frame(height: 26, alignment: .top)
+        .frame(width: 52, height: 52)
+        .frame(height: 30, alignment: .top)
         .clipped()
         .accessibilityLabel("Power gauge \(Int(fraction * 100)) percent of today's peak")
     }
