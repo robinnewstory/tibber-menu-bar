@@ -46,8 +46,26 @@ final class PriceModel: ObservableObject {
     @Published var labelStyle: LabelStyle = LabelStyle(rawValue: UserDefaults.standard.string(forKey: "labelStyle") ?? "") ?? .cents {
         didSet { UserDefaults.standard.set(labelStyle.rawValue, forKey: "labelStyle") }
     }
-    @Published var showIcon: Bool = UserDefaults.standard.object(forKey: "showIcon") as? Bool ?? true {
-        didSet { UserDefaults.standard.set(showIcon, forKey: "showIcon") }
+    enum IconStyle: String, CaseIterable { case bolt, dot, none
+        var label: String { switch self { case .bolt: return "Bolt"; case .dot: return "Colored level dot"; case .none: return "None" } }
+    }
+    @Published var iconStyle: IconStyle = {
+        if let raw = UserDefaults.standard.string(forKey: "iconStyle"), let s = IconStyle(rawValue: raw) { return s }
+        return (UserDefaults.standard.object(forKey: "showIcon") as? Bool ?? true) ? .bolt : .none
+    }() {
+        didSet { UserDefaults.standard.set(iconStyle.rawValue, forKey: "iconStyle") }
+    }
+    @Published var showNext: Bool = UserDefaults.standard.object(forKey: "showNext") as? Bool ?? false {
+        didSet { UserDefaults.standard.set(showNext, forKey: "showNext") }
+    }
+    @Published var showLevelWord: Bool = UserDefaults.standard.object(forKey: "showLevelWord") as? Bool ?? false {
+        didSet { UserDefaults.standard.set(showLevelWord, forKey: "showLevelWord") }
+    }
+    @Published var levelSource: LevelSource = LevelSource(rawValue: UserDefaults.standard.string(forKey: "levelSource") ?? "") ?? .tibber {
+        didSet { UserDefaults.standard.set(levelSource.rawValue, forKey: "levelSource") }
+    }
+    @Published var chart: ChartOptions = ChartOptions.load() {
+        didSet { chart.save() }
     }
     @Published var showTrend: Bool = UserDefaults.standard.object(forKey: "showTrend") as? Bool ?? true {
         didSet { UserDefaults.standard.set(showTrend, forKey: "showTrend") }
@@ -102,22 +120,56 @@ final class PriceModel: ObservableObject {
         return Planner.cheapestWindow(in: data, hours: notificationPrefs.plannerHours, from: now)
     }
 
+    /// How expensive a slot is, by the configured definition (Tibber's level or today's average).
+    func tier(for point: PricePoint) -> DisplayTier {
+        let sameDay = data?.today.contains(point) == true ? data?.today : data?.tomorrow
+        return TierResolver.tier(for: point, source: levelSource, dayAverage: PriceMath.stats(sameDay ?? [])?.average)
+    }
+    var currentTier: DisplayTier? { current.map(tier(for:)) }
+
+    /// A small filled circle in the tier's color, for the "level dot" menu bar icon.
+    var menuDot: NSImage {
+        let tier = currentTier
+        let color: NSColor = {
+            switch tier {
+            case .veryCheap?: return .systemGreen
+            case .cheap?: return .systemTeal
+            case .expensive?: return .systemOrange
+            case .veryExpensive?: return .systemRed
+            case .normal?, nil: return .systemGray
+            }
+        }()
+        let size = NSSize(width: 10, height: 10)
+        let image = NSImage(size: size, flipped: false) { rect in
+            color.setFill()
+            NSBezierPath(ovalIn: rect.insetBy(dx: 0.5, dy: 0.5)).fill()
+            return true
+        }
+        image.isTemplate = false
+        return image
+    }
+
     // MARK: Menu bar label
 
     var menuTitle: String {
         guard hasToken else { return "Tibber" }
         guard let current, let data else { return isLoading ? "…" : "–" }
-        var parts = [PriceFormatter.menuBar(current.total, currency: data.currency, style: labelStyle)]
-        if showTrend, let trend { parts[0] += " " + trend.arrow }
+        var first = PriceFormatter.menuBar(current.total, currency: data.currency, style: labelStyle)
+        let next = data.next(after: current.startsAt)
+        if showTrend, let trend { first += " " + trend.arrow }
+        if showNext, let next {
+            first += (showTrend ? " " : " → ") + PriceFormatter.menuBar(next.total, currency: data.currency, style: labelStyle)
+        }
+        var parts = [first]
+        if showLevelWord, let tier = currentTier { parts.append(tier.label) }
         if showLivePower, liveInMenuBar, let live = freshLive { parts.append(LiveMeasurement.formatPower(live.power)) }
         return parts.joined(separator: " · ")
     }
 
     var menuSymbol: String {
-        guard showIcon else { return "" }
         if !hasToken || (lastError != nil && data == nil) { return "bolt.slash" }
         if isOffline { return "wifi.slash" }
-        switch current?.level {
+        switch currentTier {
         case .veryCheap?, .cheap?: return "bolt.fill"
         case .expensive?, .veryExpensive?: return "bolt.trianglebadge.exclamationmark.fill"
         default: return "bolt"
@@ -340,5 +392,39 @@ enum LiveSnapshot {
         guard let d = try? Data(contentsOf: url) else { return nil }
         let dec = JSONDecoder(); dec.dateDecodingStrategy = .iso8601
         return try? dec.decode(LiveSnapshotRecord.self, from: d)
+    }
+}
+
+/// How the popover draws the price chart; persisted as JSON in UserDefaults.
+struct ChartOptions: Codable, Equatable {
+    enum Style: String, Codable, CaseIterable { case bars, line, area
+        var label: String { switch self { case .bars: return "Bars"; case .line: return "Step line"; case .area: return "Area" } }
+    }
+    enum ColorMode: String, Codable, CaseIterable { case tier, mono
+        var label: String { switch self { case .tier: return "By price level"; case .mono: return "Single color" } }
+    }
+    enum Height: String, Codable, CaseIterable { case compact, normal, tall
+        var label: String { switch self { case .compact: return "Compact"; case .normal: return "Normal"; case .tall: return "Tall" } }
+        var points: CGFloat { switch self { case .compact: return 130; case .normal: return 170; case .tall: return 220 } }
+    }
+    enum DefaultDay: String, Codable, CaseIterable { case today, both
+        var label: String { switch self { case .today: return "Today"; case .both: return "Today & tomorrow (when known)" } }
+    }
+
+    var style: Style = .bars
+    var colorMode: ColorMode = .tier
+    var showAverage = true
+    var shadeWindow = true
+    var dimPast = true
+    var fromZero = false
+    var height: Height = .normal
+    var defaultDay: DefaultDay = .today
+
+    static func load() -> ChartOptions {
+        guard let d = UserDefaults.standard.data(forKey: "chartOptions"), let o = try? JSONDecoder().decode(ChartOptions.self, from: d) else { return ChartOptions() }
+        return o
+    }
+    func save() {
+        if let d = try? JSONEncoder().encode(self) { UserDefaults.standard.set(d, forKey: "chartOptions") }
     }
 }

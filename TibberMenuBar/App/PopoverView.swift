@@ -35,13 +35,14 @@ struct PopoverView: View {
         .frame(width: 480)
         .background(Color(nsColor: .windowBackgroundColor).opacity(0.92))
         .onChange(of: day) { _, _ in scrubbed = nil }
+        .onAppear { day = (model.chart.defaultDay == .both && model.data?.hasTomorrow == true) ? .both : .today }
     }
 
     // MARK: Top tiles
 
     private func topTiles(_ data: PriceData) -> some View {
         let shown = scrubbed ?? model.current
-        let tier = shown.map { PriceMath.relativeTier($0.total, average: PriceMath.stats(data.today)?.average ?? $0.total) }
+        let tier = shown.map(model.tier(for:))
         let accent = TierColor.color(tier)
         return HStack(spacing: 12) {
             Tile(accent: accent) {
@@ -54,7 +55,7 @@ struct PopoverView: View {
                             Text(bigUnit(data)).font(.caption).foregroundStyle(.secondary)
                         }
                         HStack(spacing: 4) {
-                            Text(tier.map(TierColor.label) ?? "")
+                            Text(tier?.label ?? "")
                             if scrubbed == nil, let current = model.current, let next = data.next(after: current.startsAt) {
                                 Text("· next \(PriceFormatter.menuBar(next.total, currency: data.currency, style: .cents)) \(model.trend?.arrow ?? "")")
                             }
@@ -192,8 +193,8 @@ struct PopoverView: View {
                     .disabled(!data.hasTomorrow)
                 }
                 PriceChart(points: points, data: data, current: day == .tomorrow ? nil : model.current, now: model.now,
-                           showMidnight: day == .both, selected: $scrubbed)
-                    .frame(height: 170)
+                           showMidnight: day == .both, options: model.chart, window: model.plannedWindow, tierFor: model.tier(for:), selected: $scrubbed)
+                    .frame(height: model.chart.height.points)
             }
         }
     }
@@ -208,16 +209,17 @@ struct PopoverView: View {
 
     private func bigNumber(_ total: Double, _ data: PriceData) -> String {
         switch model.labelStyle {
-        case .cents: return PriceFormatter.menuBar(total, currency: data.currency, style: .cents).replacingOccurrences(of: PriceFormatter.centSymbol(for: data.currency), with: "")
-        case .currency: return PriceFormatter.menuBar(total, currency: data.currency, style: .currency)
-        case .plain: return PriceFormatter.menuBar(total, currency: data.currency, style: .plain)
+        case .cents, .centsWhole:
+            return PriceFormatter.menuBar(total, currency: data.currency, style: model.labelStyle).replacingOccurrences(of: PriceFormatter.centSymbol(for: data.currency), with: "")
+        case .currency, .currency3, .plain:
+            return PriceFormatter.menuBar(total, currency: data.currency, style: model.labelStyle)
         }
     }
 
     private func bigUnit(_ data: PriceData) -> String {
         switch model.labelStyle {
-        case .cents: return "\(PriceFormatter.centSymbol(for: data.currency).trimmingCharacters(in: .whitespaces))/kWh"
-        case .currency, .plain: return "/kWh"
+        case .cents, .centsWhole: return "\(PriceFormatter.centSymbol(for: data.currency).trimmingCharacters(in: .whitespaces))/kWh"
+        case .currency, .currency3, .plain: return "/kWh"
         }
     }
 
@@ -303,18 +305,13 @@ struct PowerGauge: View {
 }
 
 enum TierColor {
-    static func color(_ tier: PriceMath.RelativeTier?) -> Color {
+    static func color(_ tier: DisplayTier?) -> Color {
         switch tier {
+        case .veryCheap?: return .green
         case .cheap?: return .teal
         case .expensive?: return .orange
+        case .veryExpensive?: return .red
         case .normal?, nil: return .gray
-        }
-    }
-    static func label(_ tier: PriceMath.RelativeTier) -> String {
-        switch tier {
-        case .cheap: return "Cheap"
-        case .normal: return "Normal"
-        case .expensive: return "Expensive"
         }
     }
 }
@@ -362,12 +359,15 @@ struct PriceChart: View {
     let current: PricePoint?
     let now: Date
     let showMidnight: Bool
+    let options: ChartOptions
+    let window: PlannedWindow?
+    let tierFor: (PricePoint) -> DisplayTier
     @Binding var selected: PricePoint?
     @State private var hovered: PricePoint?
+    private let accent = Color.teal
 
     private var resolution: Resolution { data.resolution }
     private var timeZone: TimeZone { data.timeZone }
-    private var average: Double { PriceMath.stats(points)?.average ?? 0 }
     private var marker: PricePoint? { selected ?? hovered ?? current }
     private var markerDate: Date? {
         if let slot = selected ?? hovered { return slot.startsAt.addingTimeInterval(resolution.slotLength / 2) }
@@ -380,14 +380,62 @@ struct PriceChart: View {
             Text("No prices for this day yet").font(.callout).foregroundStyle(.secondary).frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
             Chart {
-                ForEach(points) { p in
+                if options.shadeWindow, let w = window, w.end > points.first!.startsAt, w.start < xDomain.upperBound {
                     RectangleMark(
-                        xStart: .value("Start", p.startsAt.addingTimeInterval(resolution.slotLength * 0.02)),
-                        xEnd: .value("End", p.startsAt.addingTimeInterval(resolution.slotLength * 0.98)),
+                        xStart: .value("Window start", max(w.start, xDomain.lowerBound)),
+                        xEnd: .value("Window end", min(w.end, xDomain.upperBound)),
                         yStart: .value("Floor", yDomain.lowerBound),
-                        yEnd: .value("Price", p.total * 100)
+                        yEnd: .value("Top", yDomain.upperBound)
                     )
-                    .foregroundStyle(barColor(p))
+                    .foregroundStyle(accent.opacity(0.12))
+                }
+                switch options.style {
+                case .bars:
+                    ForEach(points) { p in
+                        RectangleMark(
+                            xStart: .value("Start", p.startsAt.addingTimeInterval(resolution.slotLength * 0.02)),
+                            xEnd: .value("End", p.startsAt.addingTimeInterval(resolution.slotLength * 0.98)),
+                            yStart: .value("Floor", yDomain.lowerBound),
+                            yEnd: .value("Price", p.total * 100)
+                        )
+                        .foregroundStyle(barColor(p))
+                    }
+                case .line, .area:
+                    if options.style == .area {
+                        ForEach(points) { p in
+                            AreaMark(
+                                x: .value("Time", p.startsAt.addingTimeInterval(resolution.slotLength / 2)),
+                                yStart: .value("Floor", yDomain.lowerBound),
+                                yEnd: .value("Price", p.total * 100)
+                            )
+                            .interpolationMethod(.stepCenter)
+                            .foregroundStyle(lineColor.opacity(0.22))
+                        }
+                    }
+                    ForEach(points) { p in
+                        LineMark(
+                            x: .value("Time", p.startsAt.addingTimeInterval(resolution.slotLength / 2)),
+                            y: .value("Price", p.total * 100)
+                        )
+                        .interpolationMethod(.stepCenter)
+                        .lineStyle(StrokeStyle(lineWidth: 1.8))
+                        .foregroundStyle(lineColor)
+                    }
+                    if options.colorMode == .tier {
+                        ForEach(points.filter { tierFor($0) != .normal }) { p in
+                            PointMark(
+                                x: .value("Time", p.startsAt.addingTimeInterval(resolution.slotLength / 2)),
+                                y: .value("Floor", yDomain.lowerBound)
+                            )
+                            .symbolSize(10)
+                            .foregroundStyle(TierColor.color(tierFor(p)))
+                        }
+                    }
+                }
+                if options.showAverage, let s = PriceMath.stats(points) {
+                    RuleMark(y: .value("Average", s.average * 100))
+                        .lineStyle(StrokeStyle(lineWidth: 1, dash: [3, 3]))
+                        .foregroundStyle(.secondary.opacity(0.6))
                 }
                 if showMidnight, let midnight = data.tomorrow.first?.startsAt {
                     RuleMark(x: .value("Midnight", midnight))
@@ -459,13 +507,15 @@ struct PriceChart: View {
         return start...end
     }
 
-    /// Cents, padded to the nearest 5 around the day's range so the bars use the full height.
+    /// Cents, padded to the nearest 5 around the day's range so the marks use the full height (or from zero).
     private var yDomain: ClosedRange<Double> {
         guard let s = PriceMath.stats(points) else { return 0...40 }
-        let lo = (floor((s.min.total * 100 - 2) / 5) * 5)
+        let lo = options.fromZero ? min(0, floor(s.min.total * 100 / 5) * 5) : (floor((s.min.total * 100 - 2) / 5) * 5)
         let hi = (ceil((s.max.total * 100 + 2) / 5) * 5)
         return min(lo, hi - 5)...max(hi, lo + 5)
     }
+
+    private var lineColor: Color { options.colorMode == .mono ? accent : Color.primary.opacity(0.85) }
 
     private func slot(at date: Date) -> PricePoint? {
         guard let first = points.first, let last = points.last else { return nil }
@@ -475,9 +525,9 @@ struct PriceChart: View {
     }
 
     private func barColor(_ p: PricePoint) -> Color {
-        let base = TierColor.color(PriceMath.relativeTier(p.total, average: average))
+        let base = options.colorMode == .tier ? TierColor.color(tierFor(p)) : accent
         if let marker, marker.startsAt == p.startsAt { return base }
-        let isPast = p.startsAt.addingTimeInterval(resolution.slotLength) <= now
-        return base.opacity(isPast ? 0.5 : 0.85)
+        let isPast = options.dimPast && p.startsAt.addingTimeInterval(resolution.slotLength) <= now
+        return base.opacity(isPast ? 0.45 : 0.85)
     }
 }

@@ -1,15 +1,19 @@
 import Foundation
 
 public enum LabelStyle: String, Codable, CaseIterable, Sendable {
-    case cents      // "28.3¢" / "28,3 ct"
-    case currency   // "€0.28"
-    case plain      // "0.283"
+    case cents        // "28.3¢"
+    case centsWhole   // "28¢"
+    case currency     // "€0.28"
+    case currency3    // "€0.283"
+    case plain        // "0.283"
 
     public var label: String {
         switch self {
-        case .cents: return "Cents (28.3¢)"
-        case .currency: return "Currency (€0.28)"
-        case .plain: return "Plain (0.283)"
+        case .cents: return "Cents, one decimal (28,3¢)"
+        case .centsWhole: return "Cents, whole (28¢)"
+        case .currency: return "Currency (€ 0,28)"
+        case .currency3: return "Currency, three decimals (€ 0,283)"
+        case .plain: return "Plain (0,283)"
         }
     }
 }
@@ -18,22 +22,24 @@ public enum PriceFormatter {
     /// Compact menu bar text.
     public static func menuBar(_ total: Double, currency: String, style: LabelStyle, locale: Locale = .current) -> String {
         switch style {
-        case .cents:
+        case .cents, .centsWhole:
             let cents = total * 100
+            let digits = style == .cents ? 1 : 0
             let f = NumberFormatter()
             f.locale = locale
-            f.minimumFractionDigits = 1
-            f.maximumFractionDigits = 1
-            let number = f.string(from: NSNumber(value: cents)) ?? String(format: "%.1f", cents)
+            f.minimumFractionDigits = digits
+            f.maximumFractionDigits = digits
+            let number = f.string(from: NSNumber(value: cents)) ?? String(format: digits == 1 ? "%.1f" : "%.0f", cents)
             return "\(number)\(centSymbol(for: currency))"
-        case .currency:
+        case .currency, .currency3:
+            let digits = style == .currency ? 2 : 3
             let f = NumberFormatter()
             f.locale = locale
             f.numberStyle = .currency
             f.currencyCode = currency
-            f.minimumFractionDigits = 2
-            f.maximumFractionDigits = 2
-            return f.string(from: NSNumber(value: total)) ?? String(format: "%.2f", total)
+            f.minimumFractionDigits = digits
+            f.maximumFractionDigits = digits
+            return f.string(from: NSNumber(value: total)) ?? String(format: digits == 2 ? "%.2f" : "%.3f", total)
         case .plain:
             let f = NumberFormatter()
             f.locale = locale

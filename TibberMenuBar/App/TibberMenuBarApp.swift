@@ -9,10 +9,14 @@ struct TibberMenuBarApp: App {
         MenuBarExtra {
             PopoverView(model: model)
         } label: {
-            if model.showIcon {
+            switch model.iconStyle {
+            case .bolt:
                 Label { Text(model.menuTitle) } icon: { Image(systemName: model.menuSymbol) }
                     .labelStyle(.titleAndIcon)
-            } else {
+            case .dot:
+                Label { Text(model.menuTitle) } icon: { Image(nsImage: model.menuDot) }
+                    .labelStyle(.titleAndIcon)
+            case .none:
                 Text(model.menuTitle)
             }
         }

@@ -113,6 +113,8 @@ final class MathAndPolicyTests: XCTestCase {
         XCTAssertEqual(PriceFormatter.menuBar(0.2834, currency: "EUR", style: .currency, locale: en), "€0.28")
         XCTAssertEqual(PriceFormatter.menuBar(0.2834, currency: "EUR", style: .plain, locale: en), "0.283")
         XCTAssertEqual(PriceFormatter.menuBar(1.234, currency: "NOK", style: .cents, locale: en), "123.4 øre")
+        XCTAssertEqual(PriceFormatter.menuBar(0.2834, currency: "EUR", style: .centsWhole, locale: en), "28¢")
+        XCTAssertEqual(PriceFormatter.menuBar(0.2834, currency: "EUR", style: .currency3, locale: en), "€0.283")
         let tz = TimeZone(identifier: "Europe/Amsterdam")!
         let p = PricePoint(startsAt: DateParsing.parse("2026-10-08T14:15:00+02:00")!, total: 0.2, currency: "EUR")
         XCTAssertEqual(PriceFormatter.slotRange(p, slotLength: 900, timeZone: tz, locale: en), "14:15–14:30")
@@ -252,5 +254,18 @@ final class PlannerAndRulesTests: XCTestCase {
         XCTAssertEqual(LiveMeasurement.formatPower(640.4, locale: Locale(identifier: "en_US")), "640 W")
         XCTAssertTrue(LiveProtocol.subscribe(homeId: "abc").contains("liveMeasurement(homeId: \\\"abc\\\")"))
         XCTAssertTrue(LiveProtocol.connectionInit(token: "t").contains("connection_init"))
+    }
+}
+
+final class TierTests: XCTestCase {
+    func testTierResolver() {
+        let cheapByTibber = PricePoint(startsAt: Date(), total: 0.30, level: .cheap, currency: "EUR")
+        XCTAssertEqual(TierResolver.tier(for: cheapByTibber, source: .tibber, dayAverage: 0.246), .cheap)
+        XCTAssertEqual(TierResolver.tier(for: cheapByTibber, source: .average, dayAverage: 0.246), .expensive)
+        let noLevel = PricePoint(startsAt: Date(), total: 0.18, level: nil, currency: "EUR")
+        XCTAssertEqual(TierResolver.tier(for: noLevel, source: .tibber, dayAverage: 0.246), .cheap, "falls back to the average without a Tibber level")
+        XCTAssertEqual(TierResolver.tier(for: noLevel, source: .tibber, dayAverage: nil), .normal)
+        XCTAssertTrue(DisplayTier.veryCheap.isCheap)
+        XCTAssertTrue(DisplayTier.veryExpensive.isExpensive)
     }
 }

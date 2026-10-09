@@ -45,19 +45,48 @@ struct SettingsView: View {
                 Picker("Resolution", selection: $model.resolution) {
                     ForEach(Resolution.allCases, id: \.self) { Text($0.label).tag($0) }
                 }
+                Picker("Price level by", selection: $model.levelSource) {
+                    ForEach(LevelSource.allCases, id: \.self) { Text($0.label).tag($0) }
+                }
+                Text("Decides what \"cheap\" and \"expensive\" mean for the icon, the level word, the tiles and the chart colors.")
+                    .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             }
 
             Section("Menu bar") {
                 Picker("Price format", selection: $model.labelStyle) {
                     ForEach(LabelStyle.allCases, id: \.self) { Text($0.label).tag($0) }
                 }
-                Toggle("Bolt icon", isOn: $model.showIcon)
+                Picker("Icon", selection: $model.iconStyle) {
+                    ForEach(PriceModel.IconStyle.allCases, id: \.self) { Text($0.label).tag($0) }
+                }
                 Toggle("Trend arrow (next slot up/down)", isOn: $model.showTrend)
+                Toggle("Next slot's price", isOn: $model.showNext)
+                Toggle("Level word (Cheap / Normal / Expensive)", isOn: $model.showLevelWord)
+                Text("Preview: \(model.menuTitle)").font(.caption).foregroundStyle(.secondary).monospacedDigit()
                 Toggle("Live power from Tibber Pulse (in the popover)", isOn: $model.showLivePower)
                     .disabled(!model.liveSupported)
                 Toggle("Also show live power in the menu bar", isOn: $model.liveInMenuBar)
                     .disabled(!model.liveSupported || !model.showLivePower)
                 if !model.liveSupported { Text("Live power needs a home with a Tibber Pulse.").font(.caption).foregroundStyle(.secondary) }
+            }
+
+            Section("Chart") {
+                Picker("Style", selection: $model.chart.style) {
+                    ForEach(ChartOptions.Style.allCases, id: \.self) { Text($0.label).tag($0) }
+                }
+                Picker("Colors", selection: $model.chart.colorMode) {
+                    ForEach(ChartOptions.ColorMode.allCases, id: \.self) { Text($0.label).tag($0) }
+                }
+                Toggle("Average line", isOn: $model.chart.showAverage)
+                Toggle("Shade the cheapest window", isOn: $model.chart.shadeWindow)
+                Toggle("Dim past slots", isOn: $model.chart.dimPast)
+                Toggle("Axis starts at zero", isOn: $model.chart.fromZero)
+                Picker("Height", selection: $model.chart.height) {
+                    ForEach(ChartOptions.Height.allCases, id: \.self) { Text($0.label).tag($0) }
+                }
+                Picker("Opens on", selection: $model.chart.defaultDay) {
+                    ForEach(ChartOptions.DefaultDay.allCases, id: \.self) { Text($0.label).tag($0) }
+                }
             }
 
             Section("Notifications") {
