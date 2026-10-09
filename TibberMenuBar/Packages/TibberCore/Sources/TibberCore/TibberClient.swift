@@ -25,7 +25,7 @@ public final class TibberClient {
         let fields = "total energy tax startsAt currency level"
         let selection = "currentSubscription { status priceInfo(resolution: \(resolution.rawValue)) { current { \(fields) } today { \(fields) } tomorrow { \(fields) } } }"
         let home = homeId.map { "home(id: \"\($0)\")" } ?? "homes"
-        return "{ viewer { \(home) { id appNickname timeZone address { city } \(selection) } } }"
+        return "{ viewer { \(home) { id appNickname timeZone address { city } features { realTimeConsumptionEnabled } \(selection) } } }"
     }
 
     public struct Account: Equatable {
