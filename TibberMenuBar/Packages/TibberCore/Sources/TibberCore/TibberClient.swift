@@ -33,7 +33,7 @@ public final class TibberClient {
         return "{ viewer { \(home) { id appNickname timeZone address { city } features { realTimeConsumptionEnabled } \(selection) } } }"
     }
 
-    public struct Account: Equatable {
+    public struct Account: Equatable, Sendable {
         public let homes: [HomeInfo]
         public let websocketURL: URL?
     }

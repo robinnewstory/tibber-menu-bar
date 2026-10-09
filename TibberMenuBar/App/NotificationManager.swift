@@ -8,14 +8,17 @@ final class NotificationManager {
     private(set) var authorized = false
 
     func requestAuthorization() async {
-        let center = UNUserNotificationCenter.current()
-        let settings = await center.notificationSettings()
-        switch settings.authorizationStatus {
+        switch await Self.authorizationStatus() {
         case .authorized, .provisional: authorized = true
         case .notDetermined:
-            authorized = (try? await center.requestAuthorization(options: [.alert, .sound])) ?? false
+            authorized = (try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound])) ?? false
         default: authorized = false
         }
+    }
+
+    /// UNNotificationSettings is not Sendable on older SDKs, so it is read off the main actor and only the status comes back.
+    nonisolated private static func authorizationStatus() async -> UNAuthorizationStatus {
+        await UNUserNotificationCenter.current().notificationSettings().authorizationStatus
     }
 
     func deliver(title: String, body: String, id: String = UUID().uuidString) {
