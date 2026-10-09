@@ -52,8 +52,13 @@ final class PriceModel: ObservableObject {
     @Published var showTrend: Bool = UserDefaults.standard.object(forKey: "showTrend") as? Bool ?? true {
         didSet { UserDefaults.standard.set(showTrend, forKey: "showTrend") }
     }
+    /// Keeps the Pulse stream open so the popover shows live power.
     @Published var showLivePower: Bool = UserDefaults.standard.object(forKey: "showLivePower") as? Bool ?? true {
         didSet { UserDefaults.standard.set(showLivePower, forKey: "showLivePower"); restartLive() }
+    }
+    /// Also puts the live wattage in the menu bar label.
+    @Published var liveInMenuBar: Bool = UserDefaults.standard.object(forKey: "liveInMenuBar") as? Bool ?? false {
+        didSet { UserDefaults.standard.set(liveInMenuBar, forKey: "liveInMenuBar") }
     }
     @Published var notificationPrefs: NotificationPrefs = PriceModel.loadPrefs() {
         didSet {
@@ -104,7 +109,7 @@ final class PriceModel: ObservableObject {
         guard let current, let data else { return isLoading ? "…" : "–" }
         var parts = [PriceFormatter.menuBar(current.total, currency: data.currency, style: labelStyle)]
         if showTrend, let trend { parts[0] += " " + trend.arrow }
-        if showLivePower, let live = freshLive { parts.append(LiveMeasurement.formatPower(live.power)) }
+        if showLivePower, liveInMenuBar, let live = freshLive { parts.append(LiveMeasurement.formatPower(live.power)) }
         return parts.joined(separator: " · ")
     }
 

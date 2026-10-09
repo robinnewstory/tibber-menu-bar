@@ -53,8 +53,10 @@ struct SettingsView: View {
                 }
                 Toggle("Bolt icon", isOn: $model.showIcon)
                 Toggle("Trend arrow (next slot up/down)", isOn: $model.showTrend)
-                Toggle("Live power from Tibber Pulse", isOn: $model.showLivePower)
+                Toggle("Live power from Tibber Pulse (in the popover)", isOn: $model.showLivePower)
                     .disabled(!model.liveSupported)
+                Toggle("Also show live power in the menu bar", isOn: $model.liveInMenuBar)
+                    .disabled(!model.liveSupported || !model.showLivePower)
                 if !model.liveSupported { Text("Live power needs a home with a Tibber Pulse.").font(.caption).foregroundStyle(.secondary) }
             }
 
