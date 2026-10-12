@@ -4,6 +4,11 @@ All notable changes to Tibber Menu Bar. The format follows [Keep a Changelog](ht
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-10-12
+
+### Fixed
+- The power gauge in the popover was clipped on both sides and at the top; the full half circle now shows.
+
 ## [0.3.0] - 2026-10-09
 
 Fixes for the eight issues reported by @thijsvandberg. Thanks!
@@ -43,7 +48,8 @@ First public release.
 - Ten languages: English, Dutch, German, Norwegian, Swedish, Danish, Finnish, French, Spanish, Italian.
 - macOS 14 or later.
 
-[Unreleased]: https://github.com/robinnewstory/tibber-menu-bar/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/robinnewstory/tibber-menu-bar/compare/v0.3.1...HEAD
+[0.3.1]: https://github.com/robinnewstory/tibber-menu-bar/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/robinnewstory/tibber-menu-bar/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/robinnewstory/tibber-menu-bar/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/robinnewstory/tibber-menu-bar/releases/tag/v0.1.0
