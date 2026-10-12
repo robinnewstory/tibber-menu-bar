@@ -27,13 +27,15 @@ struct Tile<Content: View>: View {
 struct PowerGauge: View {
     let fraction: Double
     let color: Color
+    private let lineWidth: CGFloat = 5
 
     var body: some View {
         ZStack {
-            Circle().trim(from: 0, to: 0.5)
-                .stroke(Color.primary.opacity(0.12), style: StrokeStyle(lineWidth: 5, lineCap: .round))
-            Circle().trim(from: 0, to: 0.5 * fraction)
-                .stroke(color, style: StrokeStyle(lineWidth: 5, lineCap: .round))
+            // Inset by half the line width so the stroke stays inside the frame; otherwise .clipped() cuts it off.
+            Circle().inset(by: lineWidth / 2).trim(from: 0, to: 0.5)
+                .stroke(Color.primary.opacity(0.12), style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
+            Circle().inset(by: lineWidth / 2).trim(from: 0, to: 0.5 * fraction)
+                .stroke(color, style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
         }
         .rotationEffect(.degrees(180))
         .frame(width: 52, height: 52)
