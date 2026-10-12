@@ -6,6 +6,16 @@
     <description>Updates for Tibber Menu Bar</description>
     <language>en</language>
     <item>
+      <title>Tibber Menu Bar 0.3.1</title>
+      <pubDate>Mon, 12 Oct 2026 06:56:05 +0000</pubDate>
+      <sparkle:version>202610120856</sparkle:version>
+      <sparkle:shortVersionString>0.3.1</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>14.0.0</sparkle:minimumSystemVersion>
+      <link>https://robinnewstory.github.io/tibber-menu-bar/</link>
+      <description sparkle:format="markdown"><![CDATA[Fixes the power gauge in the popover being clipped on both sides and at the top.]]></description>
+      <enclosure url="https://github.com/robinnewstory/tibber-menu-bar/releases/download/v0.3.1/Tibber-Menu-Bar.zip" length="3682644" type="application/octet-stream" sparkle:edSignature="fj7hEUC24tba6MzD2cKBEu7XrPtYAVE9J00Jn30B0zhb6q1z1HPmH2flfZvbfL3Uk4qLisaArRxChH5r89ztBQ=="/>
+    </item>
+    <item>
       <title>Tibber Menu Bar 0.3.0</title>
       <pubDate>Fri, 09 Oct 2026 09:53:54 +0000</pubDate>
       <sparkle:version>202610091153</sparkle:version>
