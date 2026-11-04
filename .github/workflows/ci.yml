@@ -10,7 +10,7 @@ jobs:
     name: Core tests and unsigned app build
     runs-on: macos-15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Xcode version
         run: xcodebuild -version
